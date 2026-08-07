@@ -43,7 +43,7 @@ export function GameCard({ game, className }: { game: Game; className?: string }
       </div>
       <div className="space-y-2 p-3">
         <h3 className="truncate text-sm font-semibold">{game.title}</h3>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex gap-1 overflow-hidden">
           {game.genres.slice(0, 2).map((g) => (
             <Badge key={g} variant="secondary" className="rounded-md text-[10px] font-medium">
               {g}
