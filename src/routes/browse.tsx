@@ -17,13 +17,14 @@ import {
 } from "@/components/ui/select";
 import { games, genres, platforms } from "@/data/games";
 
-type Search = { genre?: string; q?: string };
+type Search = { genre?: string | undefined; q?: string | undefined };
 
 export const Route = createFileRoute("/browse")({
   validateSearch: (search: Record<string, unknown>): Search => ({
     genre: typeof search["genre"] === "string" ? search["genre"] : undefined,
     q: typeof search["q"] === "string" ? search["q"] : undefined,
   }),
+
   head: () => ({
     meta: [
       { title: "Browse Games — Filter by Genre, Platform & Price | GameSphere" },

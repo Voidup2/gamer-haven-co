@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { games, getGame } from "@/data/games";
+import { games, getGame, type Game } from "@/data/games";
 
 export const Route = createFileRoute("/game/$gameId")({
   loader: ({ params }) => {
@@ -53,7 +53,7 @@ const reviews = [
 ];
 
 function GameDetail() {
-  const { game } = Route.useLoaderData();
+  const { game } = Route.useLoaderData() as { game: Game };
   const finalPrice = game.discount ? game.price * (1 - game.discount / 100) : game.price;
   const similar = games.filter((g) => g.id !== game.id).slice(0, 5);
 
