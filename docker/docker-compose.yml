@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: gamesphere-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gamesphere
+      POSTGRES_USER: gamesphere
+      POSTGRES_PASSWORD: gamesphere
+    ports:
+      - "5432:5432"
+    volumes:
+      - gamesphere_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gamesphere -d gamesphere"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  gamesphere_postgres_data:
