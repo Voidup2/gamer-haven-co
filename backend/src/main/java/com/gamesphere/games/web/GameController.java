@@ -40,21 +40,21 @@ public class GameController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<GameResponse>> create(@Valid @RequestBody GameRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Game created", gameService.create(request)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<GameResponse>> update(
             @PathVariable String id, @Valid @RequestBody GameRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Game updated", gameService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
         gameService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Game deleted", null));
