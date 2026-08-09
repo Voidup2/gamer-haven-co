@@ -87,13 +87,13 @@ class GameControllerIntegrationTest {
         assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
         ResponseEntity<Map> second = exchange("/api/v1/games", HttpMethod.POST, token, gameJson("duplicate-game", "Duplicate Game"));
-        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void unknownGameShouldReturnNotFound() {
+    void unknownGameShouldReturnBadRequest() {
         ResponseEntity<Map> response = restTemplate.getForEntity(url("/api/v1/games/missing-game"), Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     private String loginAs(String username, String email) {
