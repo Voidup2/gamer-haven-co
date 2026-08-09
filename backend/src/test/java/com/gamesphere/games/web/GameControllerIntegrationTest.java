@@ -45,7 +45,6 @@ class GameControllerIntegrationTest {
     @Test
     void gamesListShouldBePublic() {
         ResponseEntity<Map> response = restTemplate.getForEntity(url("/api/v1/games"), Map.class);
-
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("success", true);
     }
@@ -68,24 +67,22 @@ class GameControllerIntegrationTest {
 
         ResponseEntity<Map> delete = exchange("/api/v1/games/ashen-crown", HttpMethod.DELETE, token, null);
         assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.OK);
-
         assertThat(gameRepository.findById("ashen-crown")).isEmpty();
     }
 
     @Test
     void gameCreationWithoutJwtShouldBeRejected() {
-        ResponseEntity<Map> response = restTemplate.postForEntity(
+        ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/games"),
-                json(gameJson("unauthenticated-game", "Unauthenticated Game")),
+                HttpMethod.POST,
+                new HttpEntity<>(gameJson("unauthenticated-game", "Unauthenticated Game")),
                 Map.class);
-
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
     void duplicateGameIdShouldBeRejected() {
         String token = loginAs("duplicategameuser", "duplicategame@example.com");
-
         ResponseEntity<Map> first = exchange("/api/v1/games", HttpMethod.POST, token, gameJson("duplicate-game", "Duplicate Game"));
         assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
@@ -96,7 +93,6 @@ class GameControllerIntegrationTest {
     @Test
     void unknownGameShouldReturnNotFound() {
         ResponseEntity<Map> response = restTemplate.getForEntity(url("/api/v1/games/missing-game"), Map.class);
-
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -112,7 +108,6 @@ class GameControllerIntegrationTest {
                 json("usernameOrEmail", username, "password", "Test@12345"),
                 Map.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
-
         return (String) ((Map) login.getBody().get("data")).get("accessToken");
     }
 
