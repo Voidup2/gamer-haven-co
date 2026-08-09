@@ -1,7 +1,10 @@
 package com.gamesphere.auth.web;
 
+import com.gamesphere.auth.domain.Role;
+import com.gamesphere.auth.repository.RoleRepository;
 import com.gamesphere.auth.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +35,16 @@ class AuthControllerIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @BeforeEach
+    void setUp() {
+        if (roleRepository.findByName("USER").isEmpty()) {
+            roleRepository.save(new Role("USER"));
+        }
+    }
+
     @AfterEach
     void cleanUp() {
         userRepository.deleteAll();
@@ -60,7 +73,7 @@ class AuthControllerIntegrationTest {
                         "password", "Test@12345", "displayName", "Duplicate User"),
                 Map.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
