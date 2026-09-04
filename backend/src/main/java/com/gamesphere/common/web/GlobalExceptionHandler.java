@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.failure(exception.getMessage()));
+}
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception) {
@@ -43,4 +49,12 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("An unexpected error occurred"));
     }
+    @ExceptionHandler(ResourceNotFoundException.class)
+public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(
+        ResourceNotFoundException exception) {
+
+    return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.failure(exception.getMessage()));
+}
 }
