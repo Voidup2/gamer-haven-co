@@ -1,15 +1,19 @@
 package com.gamesphere.games.service;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.gamesphere.common.web.ResourceNotFoundException;
 import com.gamesphere.games.api.GameRequest;
 import com.gamesphere.games.api.GameResponse;
 import com.gamesphere.games.domain.Game;
 import com.gamesphere.games.repository.GameRepository;
+import com.gamesphere.games.repository.GameSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.gamesphere.common.web.ResourceNotFoundException;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -22,29 +26,53 @@ public class GameService {
     }
 
     @Transactional(readOnly = true)
+    public Page<GameResponse> search(
+            String search,
+            String genre,
+            String platform,
+            String tag,
+            Integer releaseYear,
+            BigDecimal minRating,
+            BigDecimal maxRating,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Boolean multiplayer,
+            Boolean coop,
+            Boolean freeToPlay,
+            Boolean vr,
+            Boolean earlyAccess,
+            Boolean controller,
+            LocalDate releaseAfter,
+            LocalDate releaseBefore,
+            Pageable pageable) {
+
+        Specification<Game> specification = Specification.where(
+                        GameSpecifications.titleOrDeveloperOrPublisherContains(search))
+                .and(GameSpecifications.genre(genre))
+                .and(GameSpecifications.platform(platform))
+                .and(GameSpecifications.tag(tag))
+                .and(GameSpecifications.releaseYear(releaseYear))
+                .and(GameSpecifications.minRating(minRating))
+                .and(GameSpecifications.maxRating(maxRating))
+                .and(GameSpecifications.minPrice(minPrice))
+                .and(GameSpecifications.maxPrice(maxPrice))
+                .and(GameSpecifications.booleanEquals("multiplayer", multiplayer))
+                .and(GameSpecifications.booleanEquals("coop", coop))
+                .and(GameSpecifications.booleanEquals("freeToPlay", freeToPlay))
+                .and(GameSpecifications.booleanEquals("vr", vr))
+                .and(GameSpecifications.booleanEquals("earlyAccess", earlyAccess))
+                .and(GameSpecifications.booleanEquals("controller", controller))
+                .and(GameSpecifications.releaseDateAfter(releaseAfter))
+                .and(GameSpecifications.releaseDateBefore(releaseBefore));
+
+        return gameRepository.findAll(specification, pageable).map(GameResponse::from);
+    }
+
+    @Transactional(readOnly = true)
     public List<GameResponse> findAll() {
         return gameRepository.findAll().stream().map(GameResponse::from).toList();
     }
 
-    @Transactional(readOnly = true)
-        public Page<GameResponse> findAll(
-            String search,
-            Pageable pageable
-) {
-
-    Page<Game> games;
-
-    if (search != null && !search.isBlank()) {
-        games = gameRepository.findByTitleContainingIgnoreCase(
-                search.trim(),
-                pageable
-        );
-    } else {
-        games = gameRepository.findAll(pageable);
-    }
-
-    return games.map(GameResponse::from);
-}
     @Transactional(readOnly = true)
     public GameResponse findById(String id) {
         return GameResponse.from(findGame(id));
@@ -77,9 +105,9 @@ public class GameService {
     }
 
     private Game findGame(String id) {
-    return gameRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
-}
+        return gameRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
+    }
 
     private void apply(Game game, GameRequest request) {
         game.setId(request.id());
