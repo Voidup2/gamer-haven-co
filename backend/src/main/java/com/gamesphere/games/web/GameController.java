@@ -14,11 +14,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/games")
 public class GameController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "title", "rating", "price", "releaseDate", "releaseYear", "reviewCount");
 
     private final GameService gameService;
 
@@ -27,65 +32,54 @@ public class GameController {
     }
 
     @GetMapping
-public ResponseEntity<ApiResponse<Page<GameResponse>>> findAll(
-        @RequestParam(required = false) String search,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size,
-        @RequestParam(defaultValue = "title") String sortBy,
-        @RequestParam(defaultValue = "asc") String direction
-) {
+    public ResponseEntity<ApiResponse<Page<GameResponse>>> findAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String platform,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) Integer releaseYear,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(required = false) BigDecimal maxRating,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Boolean multiplayer,
+            @RequestParam(required = false) Boolean coop,
+            @RequestParam(required = false) Boolean freeToPlay,
+            @RequestParam(required = false) Boolean vr,
+            @RequestParam(required = false) Boolean earlyAccess,
+            @RequestParam(required = false) Boolean controller,
+            @RequestParam(required = false) LocalDate releaseAfter,
+            @RequestParam(required = false) LocalDate releaseBefore,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "title") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction) {
 
-    if (page < 0) {
-        throw new IllegalArgumentException(
-                "Page number cannot be negative"
-        );
+        if (page < 0) throw new IllegalArgumentException("Page number cannot be negative");
+        if (size < 1 || size > 100) throw new IllegalArgumentException("Page size must be between 1 and 100");
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) throw new IllegalArgumentException("Invalid sort field: " + sortBy);
+        if (minRating != null && maxRating != null && minRating.compareTo(maxRating) > 0)
+            throw new IllegalArgumentException("minRating cannot be greater than maxRating");
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0)
+            throw new IllegalArgumentException("minPrice cannot be greater than maxPrice");
+        if (releaseAfter != null && releaseBefore != null && releaseAfter.isAfter(releaseBefore))
+            throw new IllegalArgumentException("releaseAfter cannot be after releaseBefore");
+
+        Sort.Direction sortDirection;
+        try {
+            sortDirection = Sort.Direction.fromString(direction);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Direction must be 'asc' or 'desc'");
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+
+        return ResponseEntity.ok(ApiResponse.success("Games retrieved", gameService.search(
+                search, genre, platform, tag, releaseYear,
+                minRating, maxRating, minPrice, maxPrice,
+                multiplayer, coop, freeToPlay, vr, earlyAccess, controller,
+                releaseAfter, releaseBefore, pageable)));
     }
-
-    if (size < 1 || size > 100) {
-        throw new IllegalArgumentException(
-                "Page size must be between 1 and 100"
-        );
-    }
-     Set<String> allowedSortFields = Set.of(
-            "title",
-            "rating",
-            "price",
-            "releaseDate",
-            "releaseYear",
-            "reviewCount"
-    );
-    if (!allowedSortFields.contains(sortBy)) {
-        throw new IllegalArgumentException(
-                "Invalid sort field: " + sortBy
-        );
-    }
-
-    Sort.Direction sortDirection;
-
-    try {
-        sortDirection = Sort.Direction.fromString(direction);
-    } catch (IllegalArgumentException exception) {
-        throw new IllegalArgumentException(
-                "Direction must be 'asc' or 'desc'"
-        );
-    }
-
-    Pageable pageable = PageRequest.of(
-            page,
-            size,
-            Sort.by(sortDirection, sortBy)
-    );
-
-    return ResponseEntity.ok(
-            ApiResponse.success(
-                    "Games retrieved",
-                    gameService.findAll(
-                            search,
-                            pageable
-                    )
-            )
-    );
-}
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<GameResponse>> findById(@PathVariable String id) {
