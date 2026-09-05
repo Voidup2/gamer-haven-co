@@ -7,6 +7,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -42,19 +43,26 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.failure(exception.getMessage()));
     }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.failure("An unexpected error occurred"));
-    }
     @ExceptionHandler(ResourceNotFoundException.class)
-public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(
+public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(    
         ResourceNotFoundException exception) {
 
     return ResponseEntity
             .status(HttpStatus.NOT_FOUND)
             .body(ApiResponse.failure(exception.getMessage()));
 }
+    @ExceptionHandler(AccessDeniedException.class)
+public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
+        AccessDeniedException exception
+) {
+    return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(ApiResponse.failure(exception.getMessage()));
+}
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.failure("An unexpected error occurred"));
+    }
 }

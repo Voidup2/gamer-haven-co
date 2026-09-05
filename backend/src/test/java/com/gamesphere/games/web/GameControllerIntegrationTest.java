@@ -1,5 +1,8 @@
 package com.gamesphere.games.web;
 
+import com.gamesphere.auth.domain.Role;
+import com.gamesphere.auth.domain.User;
+import com.gamesphere.auth.repository.RoleRepository;
 import com.gamesphere.auth.repository.UserRepository;
 import com.gamesphere.games.repository.GameRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +39,9 @@ class GameControllerIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RoleRepository roleRepository;
+
     @AfterEach
     void cleanUp() {
         gameRepository.deleteAll();
@@ -44,30 +50,71 @@ class GameControllerIntegrationTest {
 
     @Test
     void gamesListShouldBePublic() {
-        ResponseEntity<Map> response = restTemplate.getForEntity(url("/api/v1/games"), Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("success", true);
+        ResponseEntity<Map> response =
+                restTemplate.getForEntity(url("/api/v1/games"), Map.class);
+
+        assertThat(response.getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        assertThat(response.getBody())
+                .containsEntry("success", true);
     }
 
     @Test
-    void createGetUpdateAndDeleteGameShouldWorkForAuthenticatedUser() {
-        String token = loginAs("gameuser", "game@example.com");
+    void createGetUpdateAndDeleteGameShouldWorkForAdminUser() {
+        String token =
+                loginAsAdmin("gameuser", "game@example.com");
 
-        ResponseEntity<Map> create = exchange("/api/v1/games", HttpMethod.POST, token, gameJson("ashen-crown", "Ashen Crown"));
-        assertThat(create.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        ResponseEntity<Map> create = exchange(
+                "/api/v1/games",
+                HttpMethod.POST,
+                token,
+                gameJson("ashen-crown", "Ashen Crown")
+        );
 
-        ResponseEntity<Map> get = exchange("/api/v1/games/ashen-crown", HttpMethod.GET, token, null);
-        assertThat(get.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(create.getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+
+        ResponseEntity<Map> get = exchange(
+                "/api/v1/games/ashen-crown",
+                HttpMethod.GET,
+                token,
+                null
+        );
+
+        assertThat(get.getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
         Map data = (Map) get.getBody().get("data");
-        assertThat(data.get("title")).isEqualTo("Ashen Crown");
 
-        ResponseEntity<Map> update = exchange("/api/v1/games/ashen-crown", HttpMethod.PUT, token, gameJson("ashen-crown", "Ashen Crown Updated"));
-        assertThat(update.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(((Map) update.getBody().get("data")).get("title")).isEqualTo("Ashen Crown Updated");
+        assertThat(data.get("title"))
+                .isEqualTo("Ashen Crown");
 
-        ResponseEntity<Map> delete = exchange("/api/v1/games/ashen-crown", HttpMethod.DELETE, token, null);
-        assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(gameRepository.findById("ashen-crown")).isEmpty();
+        ResponseEntity<Map> update = exchange(
+                "/api/v1/games/ashen-crown",
+                HttpMethod.PUT,
+                token,
+                gameJson("ashen-crown", "Ashen Crown Updated")
+        );
+
+        assertThat(update.getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        assertThat(((Map) update.getBody().get("data")).get("title"))
+                .isEqualTo("Ashen Crown Updated");
+
+        ResponseEntity<Map> delete = exchange(
+                "/api/v1/games/ashen-crown",
+                HttpMethod.DELETE,
+                token,
+                null
+        );
+
+        assertThat(delete.getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        assertThat(gameRepository.findById("ashen-crown"))
+                .isEmpty();
     }
 
     @Test
@@ -75,62 +122,162 @@ class GameControllerIntegrationTest {
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/games"),
                 HttpMethod.POST,
-                new HttpEntity<>(gameJson("unauthenticated-game", "Unauthenticated Game")),
-                Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                new HttpEntity<>(
+                        gameJson(
+                                "unauthenticated-game",
+                                "Unauthenticated Game"
+                        )
+                ),
+                Map.class
+        );
+
+        assertThat(response.getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
     void duplicateGameIdShouldBeRejected() {
-        String token = loginAs("duplicategameuser", "duplicategame@example.com");
-        ResponseEntity<Map> first = exchange("/api/v1/games", HttpMethod.POST, token, gameJson("duplicate-game", "Duplicate Game"));
-        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String token =
+                loginAsAdmin(
+                        "duplicategameuser",
+                        "duplicategame@example.com"
+                );
 
-        ResponseEntity<Map> second = exchange("/api/v1/games", HttpMethod.POST, token, gameJson("duplicate-game", "Duplicate Game"));
-        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<Map> first = exchange(
+                "/api/v1/games",
+                HttpMethod.POST,
+                token,
+                gameJson("duplicate-game", "Duplicate Game")
+        );
+
+        assertThat(first.getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+
+        ResponseEntity<Map> second = exchange(
+                "/api/v1/games",
+                HttpMethod.POST,
+                token,
+                gameJson("duplicate-game", "Duplicate Game")
+        );
+
+        assertThat(second.getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void unknownGameShouldReturnBadRequest() {
-        ResponseEntity<Map> response = restTemplate.getForEntity(url("/api/v1/games/missing-game"), Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    void unknownGameShouldReturnNotFound() {
+        ResponseEntity<Map> response =
+                restTemplate.getForEntity(
+                        url("/api/v1/games/missing-game"),
+                        Map.class
+                );
+
+        assertThat(response.getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    private String loginAs(String username, String email) {
-        ResponseEntity<Map> register = restTemplate.postForEntity(
-                url("/api/v1/auth/register"),
-                json("username", username, "email", email, "password", "Test@12345", "displayName", "Game Tester"),
-                Map.class);
-        assertThat(register.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    private String loginAsAdmin(String username, String email) {
 
-        ResponseEntity<Map> login = restTemplate.postForEntity(
-                url("/api/v1/auth/login"),
-                json("usernameOrEmail", username, "password", "Test@12345"),
-                Map.class);
-        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (String) ((Map) login.getBody().get("data")).get("accessToken");
-    }
+    ResponseEntity<Map> register =
+            restTemplate.postForEntity(
+                    url("/api/v1/auth/register"),
+                    json(
+                            "username", username,
+                            "email", email,
+                            "password", "Test@12345",
+                            "displayName", "Game Tester"
+                    ),
+                    Map.class
+            );
 
-    private ResponseEntity<Map> exchange(String path, HttpMethod method, String token, String body) {
+    assertThat(register.getStatusCode())
+            .isEqualTo(HttpStatus.CREATED);
+
+    User user = userRepository
+            .findByUsername(username)
+            .orElseThrow();
+
+    Role adminRole = roleRepository
+        .findByName("ADMIN")
+        .orElseGet(() ->
+                roleRepository.save(new Role("ADMIN"))
+        );
+
+    user.getRoles().add(adminRole);
+    userRepository.save(user);
+
+    ResponseEntity<Map> login =
+            restTemplate.postForEntity(
+                    url("/api/v1/auth/login"),
+                    json(
+                            "usernameOrEmail", username,
+                            "password", "Test@12345"
+                    ),
+                    Map.class
+            );
+
+    assertThat(login.getStatusCode())
+            .isEqualTo(HttpStatus.OK);
+
+    return (String) ((Map) login.getBody()
+            .get("data"))
+            .get("accessToken");
+}
+
+    private ResponseEntity<Map> exchange(
+            String path,
+            HttpMethod method,
+            String token,
+            String body
+    ) {
         HttpHeaders headers = new HttpHeaders();
+
         headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        return restTemplate.exchange(url(path), method, new HttpEntity<>(body, headers), Map.class);
+
+        return restTemplate.exchange(
+                url(path),
+                method,
+                new HttpEntity<>(body, headers),
+                Map.class
+        );
     }
 
     private HttpEntity<String> json(String... values) {
-        StringBuilder body = new StringBuilder("{");
+        StringBuilder body =
+                new StringBuilder("{");
+
         for (int i = 0; i < values.length; i += 2) {
-            if (i > 0) body.append(',');
-            body.append('"').append(values[i]).append("\":\"").append(values[i + 1]).append('"');
+            if (i > 0) {
+                body.append(',');
+            }
+
+            body.append('"')
+                    .append(values[i])
+                    .append("\":\"")
+                    .append(values[i + 1])
+                    .append('"');
         }
+
         body.append('}');
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        return new HttpEntity<>(body.toString(), headers);
+
+        HttpHeaders headers =
+                new HttpHeaders();
+
+        headers.setContentType(
+                MediaType.APPLICATION_JSON
+        );
+
+        return new HttpEntity<>(
+                body.toString(),
+                headers
+        );
     }
 
-    private String gameJson(String id, String title) {
+    private String gameJson(
+            String id,
+            String title
+    ) {
         return """
                 {
                   "id": "%s",

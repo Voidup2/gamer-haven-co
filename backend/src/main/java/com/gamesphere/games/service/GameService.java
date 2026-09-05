@@ -1,11 +1,14 @@
 package com.gamesphere.games.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.gamesphere.games.api.GameRequest;
 import com.gamesphere.games.api.GameResponse;
 import com.gamesphere.games.domain.Game;
 import com.gamesphere.games.repository.GameRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.gamesphere.common.web.ResourceNotFoundException;
 
 import java.util.List;
 
@@ -23,6 +26,25 @@ public class GameService {
         return gameRepository.findAll().stream().map(GameResponse::from).toList();
     }
 
+    @Transactional(readOnly = true)
+        public Page<GameResponse> findAll(
+            String search,
+            Pageable pageable
+) {
+
+    Page<Game> games;
+
+    if (search != null && !search.isBlank()) {
+        games = gameRepository.findByTitleContainingIgnoreCase(
+                search.trim(),
+                pageable
+        );
+    } else {
+        games = gameRepository.findAll(pageable);
+    }
+
+    return games.map(GameResponse::from);
+}
     @Transactional(readOnly = true)
     public GameResponse findById(String id) {
         return GameResponse.from(findGame(id));
@@ -55,9 +77,9 @@ public class GameService {
     }
 
     private Game findGame(String id) {
-        return gameRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Game not found"));
-    }
+    return gameRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
+}
 
     private void apply(Game game, GameRequest request) {
         game.setId(request.id());
