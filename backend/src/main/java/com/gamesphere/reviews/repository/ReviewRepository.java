@@ -12,6 +12,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     List<Review> findByGameIdOrderByCreatedAtDesc(String gameId);
 
+    List<Review> findByUserId(Long userId);
+
     Optional<Review> findByUserIdAndGameId(
             Long userId,
             String gameId
