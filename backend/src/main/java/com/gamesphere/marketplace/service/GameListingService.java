@@ -2,6 +2,7 @@ package com.gamesphere.marketplace.service;
 
 import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.UserRepository;
+import com.gamesphere.common.web.ConflictException;
 import com.gamesphere.common.web.ResourceNotFoundException;
 import com.gamesphere.games.domain.Game;
 import com.gamesphere.games.repository.GameRepository;
@@ -79,6 +80,14 @@ public class GameListingService {
         return listingRepository.findBySellerId(currentUser().getId(), pageable).map(this::response);
     }
 
+    @Transactional(readOnly = true)
+    public Page<GameListingResponse> findForModeration(GameListing.Status status, Pageable pageable) {
+        if (status == null) {
+            return listingRepository.findAll(pageable).map(this::response);
+        }
+        return listingRepository.findByStatus(status, pageable).map(this::response);
+    }
+
     @Transactional
     public GameListingResponse update(UUID id, GameListingRequest request) {
         GameListing listing = findOwned(id);
@@ -100,6 +109,23 @@ public class GameListingService {
     public GameListingResponse updateStatus(UUID id, GameListing.Status status) {
         GameListing listing = findOwned(id);
         listing.setStatus(status);
+        return response(listingRepository.save(listing));
+    }
+
+    @Transactional
+    public GameListingResponse moderateStatus(UUID id, GameListing.Status targetStatus) {
+        GameListing listing = findListing(id);
+        GameListing.Status currentStatus = listing.getStatus();
+        if (targetStatus == GameListing.Status.ACTIVE && currentStatus != GameListing.Status.REMOVED) {
+            throw new ConflictException("Only a removed listing can be restored");
+        }
+        if (targetStatus == GameListing.Status.SOLD && currentStatus != GameListing.Status.ACTIVE) {
+            throw new ConflictException("Only an active listing can be marked sold");
+        }
+        if (targetStatus == GameListing.Status.REMOVED && currentStatus == GameListing.Status.SOLD) {
+            throw new ConflictException("A sold listing cannot be removed");
+        }
+        listing.setStatus(targetStatus);
         return response(listingRepository.save(listing));
     }
 
