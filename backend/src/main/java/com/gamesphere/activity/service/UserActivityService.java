@@ -32,6 +32,14 @@ public class UserActivityService {
     }
 
     @Transactional(readOnly = true)
+    public UserActivity findLatest(User user, UserActivity.ActivityType type,
+                                   String referenceType, String referenceId) {
+        return repository.findFirstByUserIdAndActivityTypeAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(
+                        user.getId(), type, referenceType, referenceId)
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public Page<UserActivityResponse> mine(UserActivity.ActivityType type, Pageable pageable) {
         Long userId = currentUser().getId();
         Page<UserActivity> page = type == null
