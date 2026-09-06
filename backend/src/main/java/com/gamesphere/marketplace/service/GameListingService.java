@@ -9,6 +9,7 @@ import com.gamesphere.marketplace.api.GameListingRequest;
 import com.gamesphere.marketplace.api.GameListingResponse;
 import com.gamesphere.marketplace.domain.GameListing;
 import com.gamesphere.marketplace.repository.GameListingRepository;
+import com.gamesphere.marketplace.repository.SellerRatingRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,30 +24,28 @@ import java.util.UUID;
 
 @Service
 public class GameListingService {
-
     private final GameListingRepository listingRepository;
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
+    private final SellerRatingRepository ratingRepository;
 
     public GameListingService(GameListingRepository listingRepository, GameRepository gameRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository, SellerRatingRepository ratingRepository) {
         this.listingRepository = listingRepository;
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
+        this.ratingRepository = ratingRepository;
     }
 
     @Transactional
     public GameListingResponse create(String gameId, GameListingRequest request) {
-        Game game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
+        Game game = gameRepository.findById(gameId).orElseThrow(() -> new ResourceNotFoundException("Game not found"));
         User seller = currentUser();
-        if (request.contactEmail() == null && request.contactPhone() == null) {
-            throw new IllegalArgumentException("At least one contact method is required");
-        }
+        requireContact(request);
         GameListing listing = new GameListing(game, seller, request.title(), request.imageUrl(), request.description(),
                 request.condition(), request.price(), request.platform(), request.location(), request.contactEmail(),
                 request.contactPhone(), request.boxIncluded(), request.manualIncluded());
-        return GameListingResponse.from(listingRepository.save(listing));
+        return response(listingRepository.save(listing));
     }
 
     @Transactional(readOnly = true)
@@ -55,23 +54,16 @@ public class GameListingService {
     }
 
     @Transactional(readOnly = true)
-    public Page<GameListingResponse> findActive(String search, String gameId,
-                                                GameListing.Condition condition,
-                                                BigDecimal minPrice, BigDecimal maxPrice,
-                                                String platform, Boolean boxIncluded,
-                                                Boolean manualIncluded, Pageable pageable) {
+    public Page<GameListingResponse> findActive(String search, String gameId, GameListing.Condition condition,
+                                                BigDecimal minPrice, BigDecimal maxPrice, String platform,
+                                                Boolean boxIncluded, Boolean manualIncluded, Pageable pageable) {
         Specification<GameListing> specification = Specification.allOf(
                 GameListingSpecifications.status(GameListing.Status.ACTIVE),
-                GameListingSpecifications.search(search),
-                GameListingSpecifications.gameId(gameId),
-                GameListingSpecifications.condition(condition),
-                GameListingSpecifications.minPrice(minPrice),
-                GameListingSpecifications.maxPrice(maxPrice),
-                GameListingSpecifications.platform(platform),
-                GameListingSpecifications.boxIncluded(boxIncluded),
-                GameListingSpecifications.manualIncluded(manualIncluded)
-        );
-        return listingRepository.findAll(specification, pageable).map(GameListingResponse::from);
+                GameListingSpecifications.search(search), GameListingSpecifications.gameId(gameId),
+                GameListingSpecifications.condition(condition), GameListingSpecifications.minPrice(minPrice),
+                GameListingSpecifications.maxPrice(maxPrice), GameListingSpecifications.platform(platform),
+                GameListingSpecifications.boxIncluded(boxIncluded), GameListingSpecifications.manualIncluded(manualIncluded));
+        return listingRepository.findAll(specification, pageable).map(this::response);
     }
 
     @Transactional(readOnly = true)
@@ -80,25 +72,21 @@ public class GameListingService {
     }
 
     @Transactional(readOnly = true)
-    public GameListingResponse findById(UUID id) {
-        return GameListingResponse.from(findListing(id));
-    }
+    public GameListingResponse findById(UUID id) { return response(findListing(id)); }
 
     @Transactional(readOnly = true)
     public Page<GameListingResponse> findMine(Pageable pageable) {
-        return listingRepository.findBySellerId(currentUser().getId(), pageable).map(GameListingResponse::from);
+        return listingRepository.findBySellerId(currentUser().getId(), pageable).map(this::response);
     }
 
     @Transactional
     public GameListingResponse update(UUID id, GameListingRequest request) {
         GameListing listing = findOwned(id);
-        if (request.contactEmail() == null && request.contactPhone() == null) {
-            throw new IllegalArgumentException("At least one contact method is required");
-        }
+        requireContact(request);
         listing.update(request.title(), request.imageUrl(), request.description(), request.condition(), request.price(),
                 request.platform(), request.location(), request.contactEmail(), request.contactPhone(),
                 request.boxIncluded(), request.manualIncluded());
-        return GameListingResponse.from(listingRepository.save(listing));
+        return response(listingRepository.save(listing));
     }
 
     @Transactional
@@ -112,7 +100,21 @@ public class GameListingService {
     public GameListingResponse updateStatus(UUID id, GameListing.Status status) {
         GameListing listing = findOwned(id);
         listing.setStatus(status);
-        return GameListingResponse.from(listingRepository.save(listing));
+        return response(listingRepository.save(listing));
+    }
+
+    private GameListingResponse response(GameListing listing) {
+        Long sellerId = listing.getSeller().getId();
+        Double average = ratingRepository.findAverageRatingBySellerId(sellerId);
+        long count = ratingRepository.countBySellerId(sellerId);
+        return GameListingResponse.from(listing, average == null ? 0.0 : average, count);
+    }
+
+    private void requireContact(GameListingRequest request) {
+        if ((request.contactEmail() == null || request.contactEmail().isBlank())
+                && (request.contactPhone() == null || request.contactPhone().isBlank())) {
+            throw new IllegalArgumentException("At least one contact method is required");
+        }
     }
 
     private GameListing findOwned(UUID id) {
@@ -124,17 +126,14 @@ public class GameListingService {
     }
 
     private GameListing findListing(UUID id) {
-        return listingRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Game listing not found"));
+        return listingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Game listing not found"));
     }
 
     private User currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             throw new AccessDeniedException("Authentication required");
         }
-        return userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return userRepository.findByUsername(authentication.getName()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }
