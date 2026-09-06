@@ -14,7 +14,6 @@ public class Notification {
         SYSTEM,
         REPLY,
         MENTION,
-        FRIEND_REQUEST,
         MARKETPLACE,
         WISHLIST,
         UPCOMING_RELEASE
