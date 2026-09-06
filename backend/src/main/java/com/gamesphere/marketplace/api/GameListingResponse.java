@@ -13,6 +13,8 @@ public record GameListingResponse(
         Long sellerId,
         String sellerUsername,
         String sellerDisplayName,
+        double sellerRating,
+        long sellerReviewCount,
         String title,
         String imageUrl,
         String description,
@@ -28,14 +30,19 @@ public record GameListingResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
-    public static GameListingResponse from(GameListing listing) {
+    public static GameListingResponse from(GameListing listing, double sellerRating, long sellerReviewCount) {
         return new GameListingResponse(
                 listing.getId(), listing.getGame().getId(), listing.getGame().getTitle(),
                 listing.getSeller().getId(), listing.getSeller().getUsername(), listing.getSeller().getDisplayName(),
+                sellerRating, sellerReviewCount,
                 listing.getTitle(), listing.getImageUrl(), listing.getDescription(), listing.getCondition(),
                 listing.getPrice(), listing.getPlatform(), listing.getLocation(), listing.getContactEmail(),
                 listing.getContactPhone(), listing.isBoxIncluded(), listing.isManualIncluded(), listing.getStatus(),
                 listing.getCreatedAt(), listing.getUpdatedAt()
         );
+    }
+
+    public static GameListingResponse from(GameListing listing) {
+        return from(listing, 0.0, 0L);
     }
 }
