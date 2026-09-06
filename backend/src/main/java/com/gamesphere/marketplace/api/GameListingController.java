@@ -1,8 +1,10 @@
 package com.gamesphere.marketplace.api;
 
+import com.gamesphere.marketplace.domain.GameListing.Condition;
 import com.gamesphere.marketplace.domain.GameListing.Status;
 import com.gamesphere.marketplace.service.GameListingService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -35,10 +38,30 @@ public class GameListingController {
 
     @GetMapping("/listings")
     public Page<GameListingResponse> list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String gameId,
+            @RequestParam(required = false) Condition condition,
+            @RequestParam(required = false) @DecimalMin("0.00") BigDecimal minPrice,
+            @RequestParam(required = false) @DecimalMin("0.00") BigDecimal maxPrice,
+            @RequestParam(required = false) String platform,
+            @RequestParam(required = false) Boolean boxIncluded,
+            @RequestParam(required = false) Boolean manualIncluded,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return listingService.findActive(PageRequest.of(page, size,
-                Sort.by(Sort.Direction.DESC, "createdAt")));
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException("minPrice cannot be greater than maxPrice");
+        }
+        return listingService.findActive(search, gameId, condition, minPrice, maxPrice, platform,
+                boxIncluded, manualIncluded,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+    }
+
+    @GetMapping("/games/{gameId}/listings")
+    public Page<GameListingResponse> forGame(@PathVariable String gameId,
+                                              @RequestParam(defaultValue = "0") @Min(0) int page,
+                                              @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return listingService.findByGame(gameId,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     @GetMapping("/listings/{id}")
