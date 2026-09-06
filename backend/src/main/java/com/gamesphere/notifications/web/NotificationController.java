@@ -54,4 +54,11 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(
                 "All notifications marked as read", null));
     }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> deleteMine() {
+        notificationService.deleteMine();
+        return ResponseEntity.ok(ApiResponse.success(
+                "All notifications deleted", null));
+    }
 }
