@@ -11,12 +11,14 @@ import com.gamesphere.marketplace.domain.GameListing;
 import com.gamesphere.marketplace.repository.GameListingRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -49,7 +51,32 @@ public class GameListingService {
 
     @Transactional(readOnly = true)
     public Page<GameListingResponse> findActive(Pageable pageable) {
-        return listingRepository.findByStatus(GameListing.Status.ACTIVE, pageable).map(GameListingResponse::from);
+        return findActive(null, null, null, null, null, null, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<GameListingResponse> findActive(String search, String gameId,
+                                                GameListing.Condition condition,
+                                                BigDecimal minPrice, BigDecimal maxPrice,
+                                                String platform, Boolean boxIncluded,
+                                                Boolean manualIncluded, Pageable pageable) {
+        Specification<GameListing> specification = Specification.allOf(
+                GameListingSpecifications.status(GameListing.Status.ACTIVE),
+                GameListingSpecifications.search(search),
+                GameListingSpecifications.gameId(gameId),
+                GameListingSpecifications.condition(condition),
+                GameListingSpecifications.minPrice(minPrice),
+                GameListingSpecifications.maxPrice(maxPrice),
+                GameListingSpecifications.platform(platform),
+                GameListingSpecifications.boxIncluded(boxIncluded),
+                GameListingSpecifications.manualIncluded(manualIncluded)
+        );
+        return listingRepository.findAll(specification, pageable).map(GameListingResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<GameListingResponse> findByGame(String gameId, Pageable pageable) {
+        return findActive(null, gameId, null, null, null, null, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
