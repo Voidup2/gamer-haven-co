@@ -1,5 +1,7 @@
 package com.gamesphere.library.service;
 
+import com.gamesphere.activity.domain.UserActivity;
+import com.gamesphere.activity.service.UserActivityService;
 import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.UserRepository;
 import com.gamesphere.common.web.ConflictException;
@@ -21,13 +23,16 @@ public class FavoriteService {
     private final UserGameFavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
+    private final UserActivityService activityService;
 
     public FavoriteService(UserGameFavoriteRepository favoriteRepository,
                            UserRepository userRepository,
-                           GameRepository gameRepository) {
+                           GameRepository gameRepository,
+                           UserActivityService activityService) {
         this.favoriteRepository = favoriteRepository;
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
+        this.activityService = activityService;
     }
 
     @Transactional
@@ -40,7 +45,10 @@ public class FavoriteService {
             throw new ConflictException("Game is already in your favorites");
         }
 
-        return favoriteRepository.save(new UserGameFavorite(user, game));
+        UserGameFavorite favorite = favoriteRepository.save(new UserGameFavorite(user, game));
+        activityService.record(user, UserActivity.ActivityType.FAVORITE_ADDED,
+                "Added game to favorites", game.getTitle(), "GAME", gameId);
+        return favorite;
     }
 
     @Transactional(readOnly = true)
