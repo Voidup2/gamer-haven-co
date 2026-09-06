@@ -1,5 +1,6 @@
 package com.gamesphere.marketplace.api;
 
+import com.gamesphere.marketplace.domain.MarketplaceTransaction.Status;
 import com.gamesphere.marketplace.service.MarketplaceTransactionService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -35,16 +36,18 @@ public class MarketplaceTransactionController {
 
     @GetMapping("/users/me/purchases")
     public Page<MarketplaceTransactionResponse> purchases(
+            @RequestParam(required = false) Status status,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return transactionService.findMineAsBuyer(pageable(page, size));
+        return transactionService.findMineAsBuyer(status, pageable(page, size));
     }
 
     @GetMapping("/users/me/sales")
     public Page<MarketplaceTransactionResponse> sales(
+            @RequestParam(required = false) Status status,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return transactionService.findMineAsSeller(pageable(page, size));
+        return transactionService.findMineAsSeller(status, pageable(page, size));
     }
 
     @PutMapping("/transactions/{id}/complete")
@@ -60,9 +63,10 @@ public class MarketplaceTransactionController {
     @GetMapping("/moderation/transactions")
     @PreAuthorize("hasRole('ADMIN')")
     public Page<MarketplaceTransactionResponse> all(
+            @RequestParam(required = false) Status status,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return transactionService.findAll(pageable(page, size));
+        return transactionService.findAll(status, pageable(page, size));
     }
 
     private PageRequest pageable(int page, int size) {
