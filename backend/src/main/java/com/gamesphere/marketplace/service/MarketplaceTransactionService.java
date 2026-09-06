@@ -48,6 +48,9 @@ public class MarketplaceTransactionService {
         if (listing.getSeller().getId().equals(buyer.getId())) {
             throw new ConflictException("You cannot purchase your own listing");
         }
+        if (transactionRepository.existsByListingIdAndStatus(listingId, MarketplaceTransaction.Status.PENDING)) {
+            throw new ConflictException("This listing already has a pending purchase request");
+        }
         if (transactionRepository.existsByListingIdAndBuyerId(listingId, buyer.getId())) {
             throw new ConflictException("You already have a transaction for this listing");
         }
@@ -60,26 +63,30 @@ public class MarketplaceTransactionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MarketplaceTransactionResponse> findMineAsBuyer(Pageable pageable) {
-        return transactionRepository.findByBuyerIdOrderByCreatedAtDesc(currentUser().getId(), pageable)
-                .map(MarketplaceTransactionResponse::from);
+    public Page<MarketplaceTransactionResponse> findMineAsBuyer(MarketplaceTransaction.Status status, Pageable pageable) {
+        Long userId = currentUser().getId();
+        if (status == null) return transactionRepository.findByBuyerIdOrderByCreatedAtDesc(userId, pageable).map(MarketplaceTransactionResponse::from);
+        return transactionRepository.findByBuyerIdAndStatusOrderByCreatedAtDesc(userId, status, pageable).map(MarketplaceTransactionResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public Page<MarketplaceTransactionResponse> findMineAsSeller(Pageable pageable) {
-        return transactionRepository.findBySellerIdOrderByCreatedAtDesc(currentUser().getId(), pageable)
-                .map(MarketplaceTransactionResponse::from);
+    public Page<MarketplaceTransactionResponse> findMineAsSeller(MarketplaceTransaction.Status status, Pageable pageable) {
+        Long userId = currentUser().getId();
+        if (status == null) return transactionRepository.findBySellerIdOrderByCreatedAtDesc(userId, pageable).map(MarketplaceTransactionResponse::from);
+        return transactionRepository.findBySellerIdAndStatusOrderByCreatedAtDesc(userId, status, pageable).map(MarketplaceTransactionResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public Page<MarketplaceTransactionResponse> findAll(Pageable pageable) {
+    public Page<MarketplaceTransactionResponse> findAll(MarketplaceTransaction.Status status, Pageable pageable) {
         requireAdmin();
-        return transactionRepository.findAllByOrderByCreatedAtDesc(pageable).map(MarketplaceTransactionResponse::from);
+        if (status == null) return transactionRepository.findAllByOrderByCreatedAtDesc(pageable).map(MarketplaceTransactionResponse::from);
+        return transactionRepository.findByStatusOrderByCreatedAtDesc(status, pageable).map(MarketplaceTransactionResponse::from);
     }
 
     @Transactional
     public MarketplaceTransactionResponse complete(UUID id) {
-        MarketplaceTransaction transaction = findTransaction(id);
+        MarketplaceTransaction transaction = transactionRepository.findWithLockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
         User actor = currentUser();
         requireSellerOrAdmin(transaction, actor);
         if (transaction.getStatus() != MarketplaceTransaction.Status.PENDING) {
@@ -100,7 +107,8 @@ public class MarketplaceTransactionService {
 
     @Transactional
     public MarketplaceTransactionResponse cancel(UUID id) {
-        MarketplaceTransaction transaction = findTransaction(id);
+        MarketplaceTransaction transaction = transactionRepository.findWithLockById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
         User actor = currentUser();
         if (!transaction.getBuyer().getId().equals(actor.getId()) && !transaction.getSeller().getId().equals(actor.getId()) && !isAdmin(actor)) {
             throw new AccessDeniedException("You are not allowed to cancel this transaction");
@@ -153,7 +161,6 @@ public class MarketplaceTransactionService {
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             throw new AccessDeniedException("Authentication required");
         }
-        return userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return userRepository.findByUsername(authentication.getName()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }
