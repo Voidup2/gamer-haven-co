@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
     Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     long countByUserIdAndReadFalse(Long userId);
+    long deleteByUserId(Long userId);
 }
