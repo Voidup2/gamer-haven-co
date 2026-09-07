@@ -27,6 +27,11 @@ public class UserActivityController {
         return service.mine(type, pageable(page, size));
     }
 
+    @GetMapping("/summary")
+    public UserActivitySummaryResponse summary() {
+        return service.summary();
+    }
+
     @GetMapping("/games/{gameId}")
     public Page<UserActivityResponse> mineForGame(
             @PathVariable String gameId,
