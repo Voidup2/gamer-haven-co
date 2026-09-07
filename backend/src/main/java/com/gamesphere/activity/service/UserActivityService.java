@@ -1,6 +1,7 @@
 package com.gamesphere.activity.service;
 
 import com.gamesphere.activity.api.UserActivityResponse;
+import com.gamesphere.activity.api.UserActivitySummaryResponse;
 import com.gamesphere.activity.domain.UserActivity;
 import com.gamesphere.activity.repository.UserActivityRepository;
 import com.gamesphere.auth.domain.User;
@@ -13,6 +14,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 @Service
 public class UserActivityService {
@@ -56,6 +60,37 @@ public class UserActivityService {
         return repository.findByUserIdAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(
                         currentUser().getId(), "GAME", gameId, pageable)
                 .map(UserActivityResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public UserActivitySummaryResponse summary() {
+        Long userId = currentUser().getId();
+        Map<UserActivity.ActivityType, Long> counts = new EnumMap<>(UserActivity.ActivityType.class);
+        for (UserActivity.ActivityType type : UserActivity.ActivityType.values()) {
+            long count = repository.countByUserIdAndActivityType(userId, type);
+            if (count > 0) {
+                counts.put(type, count);
+            }
+        }
+
+        long progressUpdates = counts.getOrDefault(UserActivity.ActivityType.PROGRESS_UPDATED, 0L);
+        long gamesCompleted = counts.getOrDefault(UserActivity.ActivityType.GAME_COMPLETED, 0L);
+        long achievementsUnlocked = counts.getOrDefault(UserActivity.ActivityType.ACHIEVEMENT_UNLOCKED, 0L);
+        long marketplacePurchases = counts.getOrDefault(UserActivity.ActivityType.MARKETPLACE_PURCHASE, 0L);
+        long marketplaceSales = counts.getOrDefault(UserActivity.ActivityType.MARKETPLACE_SALE, 0L);
+
+        return new UserActivitySummaryResponse(
+                repository.countByUserId(userId),
+                counts,
+                repository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+                        .map(UserActivity::getCreatedAt)
+                        .orElse(null),
+                progressUpdates,
+                gamesCompleted,
+                achievementsUnlocked,
+                marketplacePurchases,
+                marketplaceSales
+        );
     }
 
     private User currentUser() {
