@@ -7,7 +7,11 @@ import jakarta.persistence.*;
 @Table(name = "notification_preferences")
 public class NotificationPreferences {
     @Id
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -24,9 +28,13 @@ public class NotificationPreferences {
 
     protected NotificationPreferences() {}
 
-    public NotificationPreferences(User user) { this.user = user; }
+    public NotificationPreferences(User user) {
+        this.user = user;
+        this.userId = user.getId();
+    }
 
     public User getUser() { return user; }
+    public Long getUserId() { return userId; }
     public boolean isMarketplaceEnabled() { return marketplaceEnabled; }
     public boolean isWishlistEnabled() { return wishlistEnabled; }
     public boolean isUpcomingReleaseEnabled() { return upcomingReleaseEnabled; }
