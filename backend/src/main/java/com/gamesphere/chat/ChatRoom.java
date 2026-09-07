@@ -2,7 +2,7 @@ package com.gamesphere.chat;
 
 import com.gamesphere.auth.domain.User;
 import com.gamesphere.games.domain.Game;
-import com.gamesphere.groups.GameGroup;
+import com.gamesphere.groups.domain.GameGroup;
 import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
