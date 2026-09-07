@@ -15,6 +15,11 @@ public final class ChatDtos {
             @NotBlank @Size(max = 2000) String content
     ) {}
 
+    public record WebSocketSendMessageRequest(
+            @NotBlank String roomId,
+            @NotBlank @Size(max = 2000) String content
+    ) {}
+
     public record EditMessageRequest(
             @NotBlank @Size(max = 2000) String content
     ) {}
