@@ -2,6 +2,7 @@ package com.gamesphere.activity.api;
 
 import com.gamesphere.activity.domain.UserActivity;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
@@ -13,5 +14,12 @@ public record UserActivitySummaryResponse(
         long gamesCompleted,
         long achievementsUnlocked,
         long marketplacePurchases,
-        long marketplaceSales
+        long marketplaceSales,
+        long activeDays,
+        long currentStreakDays,
+        long longestStreakDays,
+        LocalDate lastActiveDate,
+        String mostActiveGameId,
+        String mostActiveGameTitle,
+        long mostActiveGameActivityCount
 ) {}
