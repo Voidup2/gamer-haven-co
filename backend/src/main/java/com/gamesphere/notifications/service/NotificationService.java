@@ -22,16 +22,23 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final NotificationPreferencesService notificationPreferencesService;
 
     public NotificationService(NotificationRepository notificationRepository,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               NotificationPreferencesService notificationPreferencesService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.notificationPreferencesService = notificationPreferencesService;
     }
 
     @Transactional
     public NotificationResponse create(User user, NotificationType type, String title,
                                        String message, String referenceType, String referenceId) {
+        if (!notificationPreferencesService.allows(user, type)) {
+            return null;
+        }
+
         return NotificationResponse.from(notificationRepository.save(
                 new Notification(user, type, title, message, referenceType, referenceId)));
     }
