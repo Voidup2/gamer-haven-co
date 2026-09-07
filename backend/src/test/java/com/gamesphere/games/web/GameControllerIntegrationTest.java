@@ -178,6 +178,12 @@ class GameControllerIntegrationTest {
 
     private String loginAsAdmin(String username, String email) {
 
+    // Make sure the default USER role exists before registration.
+    roleRepository.findByName("USER")
+            .orElseGet(() ->
+                    roleRepository.save(new Role("USER"))
+            );
+
     ResponseEntity<Map> register =
             restTemplate.postForEntity(
                     url("/api/v1/auth/register"),
@@ -198,10 +204,10 @@ class GameControllerIntegrationTest {
             .orElseThrow();
 
     Role adminRole = roleRepository
-        .findByName("ADMIN")
-        .orElseGet(() ->
-                roleRepository.save(new Role("ADMIN"))
-        );
+            .findByName("ADMIN")
+            .orElseGet(() ->
+                    roleRepository.save(new Role("ADMIN"))
+            );
 
     user.getRoles().add(adminRole);
     userRepository.save(user);
