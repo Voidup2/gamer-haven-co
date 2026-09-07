@@ -34,7 +34,7 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/health", "/actuator/health", "/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/health", "/actuator/health", "/api/v1/auth/**", "/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/games", "/api/v1/games/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/games/*/discussions", "/api/v1/discussions/**", "/api/v1/comments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/**").permitAll()
