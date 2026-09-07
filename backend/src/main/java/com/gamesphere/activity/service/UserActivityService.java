@@ -48,6 +48,16 @@ public class UserActivityService {
         return page.map(UserActivityResponse::from);
     }
 
+    @Transactional(readOnly = true)
+    public Page<UserActivityResponse> mineForGame(String gameId, Pageable pageable) {
+        if (gameId == null || gameId.isBlank()) {
+            throw new IllegalArgumentException("gameId must not be blank");
+        }
+        return repository.findByUserIdAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(
+                        currentUser().getId(), "GAME", gameId, pageable)
+                .map(UserActivityResponse::from);
+    }
+
     private User currentUser() {
         Authentication a = SecurityContextHolder.getContext().getAuthentication();
         if (a == null || !a.isAuthenticated() || "anonymousUser".equals(a.getPrincipal())) {
