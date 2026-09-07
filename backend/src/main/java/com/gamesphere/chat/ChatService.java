@@ -44,15 +44,15 @@ public class ChatService {
     }
 
     @Transactional
-    public ChatDtos.RoomResponse global() { return createOrJoin(ChatRoomType.GLOBAL, "global", "Global Chat", null, null); }
+    public ChatDtos.RoomResponse global() { return toRoomResponse(createOrJoin(ChatRoomType.GLOBAL, "global", "Global Chat", null, null)); }
 
     @Transactional
-    public ChatDtos.RoomResponse trade() { return createOrJoin(ChatRoomType.TRADE, "trade", "Trade Chat", null, null); }
+    public ChatDtos.RoomResponse trade() { return toRoomResponse(createOrJoin(ChatRoomType.TRADE, "trade", "Trade Chat", null, null)); }
 
     @Transactional
     public ChatDtos.RoomResponse game(String gameId) {
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new ResourceNotFoundException("Game not found: " + gameId));
-        return createOrJoin(ChatRoomType.GAME, "game:" + gameId, game.getTitle() + " Chat", game, null);
+        return toRoomResponse(createOrJoin(ChatRoomType.GAME, "game:" + gameId, game.getTitle() + " Chat", game, null));
     }
 
     @Transactional
@@ -60,7 +60,7 @@ public class ChatService {
         User user = currentUser();
         GameGroup group = groupRepository.findById(groupId).orElseThrow(() -> new ResourceNotFoundException("Group not found: " + groupId));
         if (!groupMemberRepository.existsByGroupIdAndUserId(groupId, user.getId())) throw new AccessDeniedException("You must be a group member to enter its chat");
-        return createOrJoin(ChatRoomType.GROUP, "group:" + groupId, group.getName() + " Chat", null, group);
+        return toRoomResponse(createOrJoin(ChatRoomType.GROUP, "group:" + groupId, group.getName() + " Chat", null, group));
     }
 
     @Transactional
@@ -91,10 +91,6 @@ public class ChatService {
     public void leave(UUID roomId) {
         User user = currentUser(); ChatRoom room = room(roomId);
         if (room.getRoomType() == ChatRoomType.GLOBAL || room.getRoomType() == ChatRoomType.TRADE) return;
-        if (room.getRoomType() == ChatRoomType.DIRECT) {
-            memberRepository.findByRoomIdAndUserId(roomId, user.getId()).ifPresent(memberRepository::delete);
-            return;
-        }
         memberRepository.findByRoomIdAndUserId(roomId, user.getId()).ifPresent(memberRepository::delete);
     }
 
@@ -134,9 +130,7 @@ public class ChatService {
         member.setLastReadAt(OffsetDateTime.now()); memberRepository.save(member);
     }
 
-    public void assertCanAccess(UUID roomId, User user) {
-        ChatRoom room = room(roomId); ensureCanAccess(room, user);
-    }
+    public void assertCanAccess(UUID roomId, User user) { ensureCanAccess(room(roomId), user); }
 
     private ChatDtos.RoomResponse toRoomResponse(ChatRoom room) {
         String gameId = room.getGame() == null ? null : room.getGame().getId();
