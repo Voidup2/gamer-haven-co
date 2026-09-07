@@ -67,6 +67,11 @@ public class NotificationService {
                 });
     }
 
+    @Transactional
+    public void deleteMine() {
+        notificationRepository.deleteByUserId(getCurrentUser().getId());
+    }
+
     private Notification findOwned(UUID id) {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
