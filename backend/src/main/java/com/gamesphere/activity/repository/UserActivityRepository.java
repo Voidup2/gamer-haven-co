@@ -11,5 +11,8 @@ import java.util.UUID;
 public interface UserActivityRepository extends JpaRepository<UserActivity, UUID> {
     Page<UserActivity> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     Page<UserActivity> findByUserIdAndActivityTypeOrderByCreatedAtDesc(Long userId, UserActivity.ActivityType activityType, Pageable pageable);
-    Optional<UserActivity> findFirstByUserIdAndActivityTypeAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(Long userId, UserActivity.ActivityType activityType, String referenceType, String referenceId);
+    Page<UserActivity> findByUserIdAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(
+            Long userId, String referenceType, String referenceId, Pageable pageable);
+    Optional<UserActivity> findFirstByUserIdAndActivityTypeAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(
+            Long userId, UserActivity.ActivityType activityType, String referenceType, String referenceId);
 }
