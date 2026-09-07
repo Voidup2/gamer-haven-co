@@ -15,4 +15,7 @@ public interface UserActivityRepository extends JpaRepository<UserActivity, UUID
             Long userId, String referenceType, String referenceId, Pageable pageable);
     Optional<UserActivity> findFirstByUserIdAndActivityTypeAndReferenceTypeAndReferenceIdOrderByCreatedAtDesc(
             Long userId, UserActivity.ActivityType activityType, String referenceType, String referenceId);
+    long countByUserId(Long userId);
+    long countByUserIdAndActivityType(Long userId, UserActivity.ActivityType activityType);
+    Optional<UserActivity> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
 }
