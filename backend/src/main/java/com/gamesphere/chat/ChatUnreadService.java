@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ChatUnreadService {
@@ -15,9 +16,7 @@ public class ChatUnreadService {
     private final UserRepository userRepository;
 
     public ChatUnreadService(ChatRoomMemberRepository memberRepository, ChatMessageRepository messageRepository, UserRepository userRepository) {
-        this.memberRepository = memberRepository;
-        this.messageRepository = messageRepository;
-        this.userRepository = userRepository;
+        this.memberRepository = memberRepository; this.messageRepository = messageRepository; this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +40,7 @@ public class ChatUnreadService {
         return unread(member.getLastReadAt(), member.getJoinedAt(), roomId);
     }
 
-    private long unread(OffsetDateTime lastReadAt, OffsetDateTime joinedAt, java.util.UUID roomId) {
+    private long unread(OffsetDateTime lastReadAt, OffsetDateTime joinedAt, UUID roomId) {
         return messageRepository.countByRoomIdAndCreatedAtAfter(roomId, lastReadAt != null ? lastReadAt : joinedAt);
     }
 
