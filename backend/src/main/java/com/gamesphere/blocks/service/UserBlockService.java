@@ -45,6 +45,12 @@ public class UserBlockService {
         return blockRepository.existsByBlockerIdAndBlockedId(find(username).getId(), userId);
     }
 
+    @Transactional(readOnly = true)
+    public boolean isEitherBlocked(Long firstUserId, Long secondUserId) {
+        return blockRepository.existsByBlockerIdAndBlockedId(firstUserId, secondUserId)
+                || blockRepository.existsByBlockerIdAndBlockedId(secondUserId, firstUserId);
+    }
+
     private User find(String username) { return userRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("User not found")); }
     private UserBlockDtos.BlockResponse toResponse(UserBlock block) { User u = block.getBlocked(); return new UserBlockDtos.BlockResponse(u.getId(), u.getUsername(), u.getDisplayName(), block.getCreatedAt()); }
 }
