@@ -9,4 +9,5 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     boolean existsByRoomIdAndUserId(UUID roomId, Long userId);
     Optional<ChatRoomMember> findByRoomIdAndUserId(UUID roomId, Long userId);
     long countByRoomId(UUID roomId);
+    void deleteByRoomIdAndUserId(UUID roomId, Long userId);
 }
