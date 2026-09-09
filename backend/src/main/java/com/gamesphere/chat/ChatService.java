@@ -2,6 +2,7 @@ package com.gamesphere.chat;
 
 import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.UserRepository;
+import com.gamesphere.blocks.repository.UserBlockRepository;
 import com.gamesphere.common.exception.ConflictException;
 import com.gamesphere.common.exception.ResourceNotFoundException;
 import com.gamesphere.games.domain.Game;
@@ -26,6 +27,7 @@ public class ChatService {
     private final ChatRoomMemberRepository memberRepository;
     private final ChatMessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final UserBlockRepository blockRepository;
     private final GameRepository gameRepository;
     private final GameGroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -33,11 +35,12 @@ public class ChatService {
 
     public ChatService(ChatRoomRepository roomRepository, ChatRoomMemberRepository memberRepository,
                        ChatMessageRepository messageRepository, UserRepository userRepository,
-                       GameRepository gameRepository, GameGroupRepository groupRepository,
-                       GroupMemberRepository groupMemberRepository, ChatRealtimePublisher realtimePublisher) {
+                       UserBlockRepository blockRepository, GameRepository gameRepository,
+                       GameGroupRepository groupRepository, GroupMemberRepository groupMemberRepository,
+                       ChatRealtimePublisher realtimePublisher) {
         this.roomRepository = roomRepository; this.memberRepository = memberRepository; this.messageRepository = messageRepository;
-        this.userRepository = userRepository; this.gameRepository = gameRepository; this.groupRepository = groupRepository;
-        this.groupMemberRepository = groupMemberRepository; this.realtimePublisher = realtimePublisher;
+        this.userRepository = userRepository; this.blockRepository = blockRepository; this.gameRepository = gameRepository;
+        this.groupRepository = groupRepository; this.groupMemberRepository = groupMemberRepository; this.realtimePublisher = realtimePublisher;
     }
 
     @Transactional public ChatDtos.RoomResponse global() { return toRoomResponse(createOrJoin(ChatRoomType.GLOBAL, "global", "Global Chat", null, null)); }
@@ -55,8 +58,10 @@ public class ChatService {
     }
 
     @Transactional public ChatDtos.RoomResponse direct(Long otherUserId) {
-        User user = currentUser(); if (user.getId().equals(otherUserId)) throw new ConflictException("You cannot start a direct chat with yourself");
+        User user = currentUser();
+        if (user.getId().equals(otherUserId)) throw new ConflictException("You cannot start a direct chat with yourself");
         User other = userRepository.findById(otherUserId).orElseThrow(() -> new ResourceNotFoundException("User not found: " + otherUserId));
+        assertNotBlocked(user, other);
         long first = Math.min(user.getId(), other.getId()), second = Math.max(user.getId(), other.getId()); String key = "direct:" + first + ":" + second;
         ChatRoom room = roomRepository.findByRoomKey(key).orElseGet(() -> {
             ChatRoom created = roomRepository.save(new ChatRoom(UUID.randomUUID(), ChatRoomType.DIRECT, key,
@@ -88,6 +93,10 @@ public class ChatService {
 
     @Transactional public ChatDtos.MessageResponse send(UUID roomId, ChatDtos.SendMessageRequest request) {
         User user = currentUser(); ChatRoom room = room(roomId); ensureCanAccess(room, user);
+        if (room.getRoomType() == ChatRoomType.DIRECT) {
+            User other = memberRepository.findOtherUser(roomId, user.getId()).orElseThrow(() -> new AccessDeniedException("Direct chat participant not found"));
+            assertNotBlocked(user, other);
+        }
         ChatMessage message = messageRepository.save(new ChatMessage(UUID.randomUUID(), room, user, request.content().trim())); return toMessageResponse(message);
     }
 
@@ -117,7 +126,18 @@ public class ChatService {
     private ChatDtos.MessageResponse toMessageResponse(ChatMessage message) { User sender = message.getSender(); return new ChatDtos.MessageResponse(message.getId(), message.getRoom().getId(), sender.getId(), sender.getUsername(), sender.getDisplayName(), message.getContent(), message.getCreatedAt(), message.getEditedAt()); }
     private ChatRoom createOrJoin(ChatRoomType type, String key, String name, Game game, GameGroup group) { User user = currentUser(); ChatRoom room = roomRepository.findByRoomKey(key).orElseGet(() -> roomRepository.save(new ChatRoom(UUID.randomUUID(), type, key, name, game, group, user))); ensureMember(room, user); return room; }
     private void ensureMember(ChatRoom room, User user) { if (!memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) memberRepository.save(new ChatRoomMember(room, user)); }
-    private void ensureCanAccess(ChatRoom room, User user) { if (room.getRoomType() == ChatRoomType.GROUP && room.getGroup() != null && !groupMemberRepository.existsByGroupIdAndUserId(room.getGroup().getId(), user.getId())) throw new AccessDeniedException("You must be a group member to use this chat"); if (room.getRoomType() == ChatRoomType.DIRECT && !memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) throw new AccessDeniedException("This direct chat is private"); ensureMember(room, user); }
+    private void ensureCanAccess(ChatRoom room, User user) {
+        if (room.getRoomType() == ChatRoomType.GROUP && room.getGroup() != null && !groupMemberRepository.existsByGroupIdAndUserId(room.getGroup().getId(), user.getId())) throw new AccessDeniedException("You must be a group member to use this chat");
+        if (room.getRoomType() == ChatRoomType.DIRECT) {
+            if (!memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) throw new AccessDeniedException("This direct chat is private");
+            User other = memberRepository.findOtherUser(room.getId(), user.getId()).orElseThrow(() -> new AccessDeniedException("Direct chat participant not found"));
+            assertNotBlocked(user, other);
+        }
+        ensureMember(room, user);
+    }
+    private void assertNotBlocked(User first, User second) {
+        if (blockRepository.existsByBlockerIdAndBlockedId(first.getId(), second.getId()) || blockRepository.existsByBlockerIdAndBlockedId(second.getId(), first.getId())) throw new AccessDeniedException("Direct chat is unavailable because one user has blocked the other");
+    }
     private ChatRoom room(UUID id) { return roomRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Chat room not found: " + id)); }
     private User currentUser() { Authentication authentication = SecurityContextHolder.getContext().getAuthentication(); if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) throw new AccessDeniedException("Authentication required"); return userRepository.findByUsername(authentication.getName()).orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found")); }
     private boolean isAdmin() { Authentication authentication = SecurityContextHolder.getContext().getAuthentication(); return authentication != null && authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())); }
