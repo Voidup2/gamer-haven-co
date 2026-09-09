@@ -11,6 +11,8 @@ import com.gamesphere.discussions.domain.Discussion;
 import com.gamesphere.discussions.repository.DiscussionRepository;
 import com.gamesphere.games.domain.Game;
 import com.gamesphere.games.repository.GameRepository;
+import com.gamesphere.notifications.domain.Notification.NotificationType;
+import com.gamesphere.notifications.service.NotificationService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,13 +23,14 @@ import java.util.UUID;
 
 @Service
 public class DiscussionService {
-    private final DiscussionRepository discussionRepository; private final GameRepository gameRepository; private final UserRepository userRepository; private final UserActivityService activityService;
-    public DiscussionService(DiscussionRepository discussionRepository, GameRepository gameRepository, UserRepository userRepository, UserActivityService activityService) { this.discussionRepository=discussionRepository; this.gameRepository=gameRepository; this.userRepository=userRepository; this.activityService=activityService; }
+    private final DiscussionRepository discussionRepository; private final GameRepository gameRepository; private final UserRepository userRepository; private final UserActivityService activityService; private final NotificationService notificationService;
+    public DiscussionService(DiscussionRepository discussionRepository, GameRepository gameRepository, UserRepository userRepository, UserActivityService activityService, NotificationService notificationService) { this.discussionRepository=discussionRepository; this.gameRepository=gameRepository; this.userRepository=userRepository; this.activityService=activityService; this.notificationService=notificationService; }
     @Transactional public DiscussionResponse create(String gameId, DiscussionRequest request) { Game game=gameRepository.findById(gameId).orElseThrow(() -> new ResourceNotFoundException("Game not found")); User user=getCurrentUser(); Discussion discussion=discussionRepository.save(new Discussion(game,user,request.title(),request.content())); activityService.record(user,UserActivity.ActivityType.DISCUSSION_CREATED,"Created a discussion",request.title(),"DISCUSSION",discussion.getId().toString()); return DiscussionResponse.from(discussion); }
     @Transactional(readOnly=true) public List<DiscussionResponse> findByGameId(String gameId) { if(!gameRepository.existsById(gameId)) throw new ResourceNotFoundException("Game not found"); return discussionRepository.findByGameIdOrderByCreatedAtDesc(gameId).stream().map(DiscussionResponse::from).toList(); }
     @Transactional(readOnly=true) public DiscussionResponse findById(UUID id) { return DiscussionResponse.from(findDiscussion(id)); }
     @Transactional public DiscussionResponse update(UUID id, DiscussionRequest request) { Discussion discussion=findDiscussion(id); User currentUser=getCurrentUser(); checkOwnerOrAdmin(discussion,currentUser); discussion.setTitle(request.title()); discussion.setContent(request.content()); return DiscussionResponse.from(discussionRepository.save(discussion)); }
     @Transactional public void delete(UUID id) { Discussion discussion=findDiscussion(id); User currentUser=getCurrentUser(); checkOwnerOrAdmin(discussion,currentUser); discussionRepository.delete(discussion); }
+    public void notifyReplyAuthor(Discussion discussion, User replier) { if (!discussion.getUser().getId().equals(replier.getId())) { notificationService.create(discussion.getUser(), NotificationType.REPLY, "New discussion reply", replier.getDisplayName() != null ? replier.getDisplayName() + " replied to your discussion" : replier.getUsername() + " replied to your discussion", "DISCUSSION", discussion.getId().toString()); } }
     private Discussion findDiscussion(UUID id) { return discussionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Discussion not found")); }
     private User getCurrentUser() { Authentication authentication=SecurityContextHolder.getContext().getAuthentication(); if(authentication==null || !authentication.isAuthenticated()) throw new AccessDeniedException("Authentication required"); return userRepository.findByUsername(authentication.getName()).orElseThrow(() -> new ResourceNotFoundException("User not found")); }
     private void checkOwnerOrAdmin(Discussion discussion, User currentUser) { boolean owner=discussion.getUser().getId().equals(currentUser.getId()); boolean admin=currentUser.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())); if(!owner && !admin) throw new AccessDeniedException("You are not allowed to modify this discussion"); }
