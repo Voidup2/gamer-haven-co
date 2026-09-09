@@ -14,6 +14,11 @@ public class ChatRealtimePublisher {
         this.messagingTemplate = messagingTemplate;
     }
 
+    public void messageSent(ChatDtos.MessageResponse message) {
+        publish(new ChatRealtimeEvent(ChatRealtimeEventType.MESSAGE_SENT, message.roomId(), message.id(),
+                message.senderId(), message.senderUsername(), OffsetDateTime.now()));
+    }
+
     public void messageEdited(ChatDtos.MessageResponse message) {
         publish(new ChatRealtimeEvent(ChatRealtimeEventType.MESSAGE_EDITED, message.roomId(), message.id(),
                 message.senderId(), message.senderUsername(), OffsetDateTime.now()));
