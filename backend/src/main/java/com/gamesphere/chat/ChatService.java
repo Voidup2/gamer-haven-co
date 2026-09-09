@@ -10,6 +10,8 @@ import com.gamesphere.games.repository.GameRepository;
 import com.gamesphere.groups.domain.GameGroup;
 import com.gamesphere.groups.repository.GameGroupRepository;
 import com.gamesphere.groups.repository.GroupMemberRepository;
+import com.gamesphere.notifications.domain.Notification.NotificationType;
+import com.gamesphere.notifications.service.NotificationService;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,15 +34,17 @@ public class ChatService {
     private final GameGroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final ChatRealtimePublisher realtimePublisher;
+    private final NotificationService notificationService;
 
     public ChatService(ChatRoomRepository roomRepository, ChatRoomMemberRepository memberRepository,
                        ChatMessageRepository messageRepository, UserRepository userRepository,
                        UserBlockRepository blockRepository, GameRepository gameRepository,
                        GameGroupRepository groupRepository, GroupMemberRepository groupMemberRepository,
-                       ChatRealtimePublisher realtimePublisher) {
+                       ChatRealtimePublisher realtimePublisher, NotificationService notificationService) {
         this.roomRepository = roomRepository; this.memberRepository = memberRepository; this.messageRepository = messageRepository;
         this.userRepository = userRepository; this.blockRepository = blockRepository; this.gameRepository = gameRepository;
         this.groupRepository = groupRepository; this.groupMemberRepository = groupMemberRepository; this.realtimePublisher = realtimePublisher;
+        this.notificationService = notificationService;
     }
 
     @Transactional public ChatDtos.RoomResponse global() { return toRoomResponse(createOrJoin(ChatRoomType.GLOBAL, "global", "Global Chat", null, null)); }
@@ -93,11 +97,20 @@ public class ChatService {
 
     @Transactional public ChatDtos.MessageResponse send(UUID roomId, ChatDtos.SendMessageRequest request) {
         User user = currentUser(); ChatRoom room = room(roomId); ensureCanAccess(room, user);
+        User recipient = null;
         if (room.getRoomType() == ChatRoomType.DIRECT) {
-            User other = memberRepository.findOtherUser(roomId, user.getId()).orElseThrow(() -> new AccessDeniedException("Direct chat participant not found"));
-            assertNotBlocked(user, other);
+            recipient = memberRepository.findOtherUser(roomId, user.getId()).orElseThrow(() -> new AccessDeniedException("Direct chat participant not found"));
+            assertNotBlocked(user, recipient);
         }
-        ChatMessage message = messageRepository.save(new ChatMessage(UUID.randomUUID(), room, user, request.content().trim())); return toMessageResponse(message);
+        ChatMessage message = messageRepository.save(new ChatMessage(UUID.randomUUID(), room, user, request.content().trim()));
+        ChatDtos.MessageResponse response = toMessageResponse(message);
+        realtimePublisher.messageSent(response);
+        if (recipient != null && !recipient.getId().equals(user.getId())) {
+            notificationService.create(recipient, NotificationType.SYSTEM, "New direct message",
+                    user.getDisplayName() != null ? user.getDisplayName() + " sent you a message" : user.getUsername() + " sent you a message",
+                    "CHAT_ROOM", roomId.toString());
+        }
+        return response;
     }
 
     @Transactional public ChatDtos.MessageResponse edit(UUID messageId, ChatDtos.EditMessageRequest request) {
