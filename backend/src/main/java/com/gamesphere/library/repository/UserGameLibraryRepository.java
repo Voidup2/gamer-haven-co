@@ -1,6 +1,7 @@
 package com.gamesphere.library.repository;
 
 import com.gamesphere.library.domain.UserGameLibrary;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -10,6 +11,7 @@ public interface UserGameLibraryRepository
 
     boolean existsByUserIdAndGameId(Long userId, String gameId);
 
+    @EntityGraph(attributePaths = "game")
     List<UserGameLibrary> findByUserId(Long userId);
 
     void deleteByUserIdAndGameId(Long userId, String gameId);
