@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -23,6 +24,7 @@ public interface UserActivityRepository extends JpaRepository<UserActivity, UUID
     long countByUserIdAndActivityType(Long userId, UserActivity.ActivityType activityType);
     Optional<UserActivity> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
 
+    @Transactional
     void deleteByUserId(Long userId);
 
     @Query("select a.createdAt from UserActivity a where a.user.id = :userId order by a.createdAt desc")
