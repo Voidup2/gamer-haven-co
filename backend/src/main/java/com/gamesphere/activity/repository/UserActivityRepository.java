@@ -23,6 +23,8 @@ public interface UserActivityRepository extends JpaRepository<UserActivity, UUID
     long countByUserIdAndActivityType(Long userId, UserActivity.ActivityType activityType);
     Optional<UserActivity> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
 
+    void deleteByUserId(Long userId);
+
     @Query("select a.createdAt from UserActivity a where a.user.id = :userId order by a.createdAt desc")
     List<OffsetDateTime> findCreatedAtByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
 
