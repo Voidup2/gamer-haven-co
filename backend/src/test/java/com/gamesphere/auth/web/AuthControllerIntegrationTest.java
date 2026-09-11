@@ -1,13 +1,18 @@
 package com.gamesphere.auth.web;
 
+import com.gamesphere.auth.domain.EmailVerificationToken;
 import com.gamesphere.auth.domain.Role;
+import com.gamesphere.auth.repository.EmailVerificationTokenRepository;
 import com.gamesphere.auth.repository.RoleRepository;
 import com.gamesphere.auth.repository.UserRepository;
+import com.gamesphere.auth.service.EmailSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -18,9 +23,17 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -38,8 +51,15 @@ class AuthControllerIntegrationTest {
     @Autowired
     private RoleRepository roleRepository;
 
+    @Autowired
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @MockBean
+    private EmailSender emailSender;
+
     @BeforeEach
     void setUp() {
+        reset(emailSender);
         if (roleRepository.findByName("USER").isEmpty()) {
             roleRepository.save(new Role("USER"));
         }
@@ -51,7 +71,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    void registrationShouldCreateUser() {
+    void registrationShouldCreateUnverifiedUser() {
         ResponseEntity<Map> response = restTemplate.postForEntity(
                 url("/api/v1/auth/register"),
                 json("username", "integrationuser", "email", "integration@example.com",
@@ -61,6 +81,110 @@ class AuthControllerIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).containsEntry("success", true);
         assertThat(userRepository.findByUsername("integrationuser")).isPresent();
+        assertThat(userRepository.findByUsername("integrationuser").orElseThrow().isEmailVerified()).isFalse();
+    }
+
+    @Test
+    void registrationShouldSendVerificationToken() {
+        registerUnverified("verificationuser", "verification@example.com");
+
+        ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> tokenCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailSender).sendVerificationEmail(emailCaptor.capture(), tokenCaptor.capture());
+
+        assertThat(emailCaptor.getValue()).isEqualTo("verification@example.com");
+        assertThat(tokenCaptor.getValue()).isNotBlank();
+        assertThat(emailVerificationTokenRepository.findAll()).hasSize(1);
+        assertThat(emailVerificationTokenRepository.findAll().getFirst().getTokenHash())
+                .isEqualTo(hash(tokenCaptor.getValue()));
+    }
+
+    @Test
+    void emailVerificationShouldSucceedAndTokenShouldBecomeInvalid() {
+        registerUnverified("verifyuser", "verify@example.com");
+        String token = latestVerificationToken();
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", token),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(userRepository.findByUsername("verifyuser").orElseThrow().isEmailVerified()).isTrue();
+
+        ResponseEntity<Map> reuseResponse = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", token),
+                Map.class);
+
+        assertThat(reuseResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void invalidVerificationTokenShouldBeRejected() {
+        registerUnverified("invalidverify", "invalidverify@example.com");
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", "not-a-real-verification-token"),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(userRepository.findByUsername("invalidverify").orElseThrow().isEmailVerified()).isFalse();
+    }
+
+    @Test
+    void expiredVerificationTokenShouldBeRejected() {
+        registerUnverified("expiredverify", "expiredverify@example.com");
+        var user = userRepository.findByUsername("expiredverify").orElseThrow();
+        String expiredToken = "expired-verification-token";
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        emailVerificationTokenRepository.save(new EmailVerificationToken(
+                UUID.randomUUID(),
+                user,
+                hash(expiredToken),
+                now.minusMinutes(1),
+                now.minusMinutes(2)
+        ));
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", expiredToken),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(user.isEmailVerified()).isFalse();
+    }
+
+    @Test
+    void alreadyVerifiedUserShouldRemainVerifiedWhenTokenIsReused() {
+        registerUnverified("alreadyverified", "alreadyverified@example.com");
+        String token = latestVerificationToken();
+
+        ResponseEntity<Map> firstResponse = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", token),
+                Map.class);
+        ResponseEntity<Map> secondResponse = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", token),
+                Map.class);
+
+        assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(userRepository.findByUsername("alreadyverified").orElseThrow().isEmailVerified()).isTrue();
+    }
+
+    @Test
+    void unverifiedUserShouldNotBeAllowedToLogin() {
+        registerUnverified("unverifiedlogin", "unverifiedlogin@example.com");
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                url("/api/v1/auth/login"),
+                json("usernameOrEmail", "unverifiedlogin", "password", "Test@12345"),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -236,12 +360,29 @@ class AuthControllerIntegrationTest {
     }
 
     private void register(String username, String email) {
+        registerUnverified(username, email);
+        String token = latestVerificationToken();
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                url("/api/v1/auth/verify-email"),
+                json("token", token),
+                Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    private void registerUnverified(String username, String email) {
         ResponseEntity<Map> response = restTemplate.postForEntity(
                 url("/api/v1/auth/register"),
                 json("username", username, "email", email,
                         "password", "Test@12345", "displayName", "Test User"),
                 Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    private String latestVerificationToken() {
+        ArgumentCaptor<String> tokenCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailSender).sendVerificationEmail(
+                org.mockito.ArgumentMatchers.anyString(), tokenCaptor.capture());
+        return tokenCaptor.getValue();
     }
 
     private ResponseEntity<Map> authenticatedRequest(
@@ -271,6 +412,20 @@ class AuthControllerIntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return new HttpEntity<>(body.toString(), headers);
+    }
+
+    private String hash(String token) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(64);
+            for (byte value : digest) {
+                result.append(String.format("%02x", value));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
     private String url(String path) {
