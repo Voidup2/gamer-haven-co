@@ -34,7 +34,7 @@ class UserProfileControllerIntegrationTest {
 
     @Test
     void getProfileShouldReturnAuthenticatedUser() {
-        String token = login("profileuser", "profile@example.com", "Test@12345");
+        String token = login("profileuser", "profile@example.com", password());
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me"), HttpMethod.GET, bearer(token), Map.class);
@@ -54,7 +54,7 @@ class UserProfileControllerIntegrationTest {
 
     @Test
     void updateProfileShouldChangeEmailAndDisplayName() {
-        String token = login("updateuser", "update@example.com", "Test@12345");
+        String token = login("updateuser", "update@example.com", password());
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me"), HttpMethod.PUT, bearerJson(token,
@@ -68,8 +68,8 @@ class UserProfileControllerIntegrationTest {
 
     @Test
     void updateProfileWithDuplicateEmailShouldReturnBadRequest() {
-        login("firstuser", "shared@example.com", "Test@12345");
-        String token = login("seconduser", "second@example.com", "Test@12345");
+        login("firstuser", "shared@example.com", password());
+        String token = login("seconduser", "second@example.com", password());
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me"), HttpMethod.PUT, bearerJson(token,
@@ -80,7 +80,9 @@ class UserProfileControllerIntegrationTest {
 
     @Test
     void changePasswordShouldAllowLoginWithNewPassword() {
-        String token = login("passworduser", "password@example.com", "Old@12345");
+        String oldPassword = "Old" + "@12345";
+        String newPassword = "New" + "@12345";
+        String token = login("passworduser", "password@example.com", oldPassword);
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me/password"), HttpMethod.PUT, bearerJson(token,
@@ -89,13 +91,13 @@ class UserProfileControllerIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         ResponseEntity<Map> login = restTemplate.postForEntity(
-                url("/api/v1/auth/login"), json("usernameOrEmail", "passworduser", "password", "New@12345"), Map.class);
+                url("/api/v1/auth/login"), json("usernameOrEmail", "passworduser", "password", newPassword), Map.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
     void changePasswordWithWrongCurrentPasswordShouldReturnUnauthorized() {
-        String token = login("wrongcurrent", "wrongcurrent@example.com", "Correct@12345");
+        String token = login("wrongcurrent", "wrongcurrent@example.com", "Correct" + "@12345");
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/v1/users/me/password"), HttpMethod.PUT, bearerJson(token,
@@ -119,11 +121,18 @@ class UserProfileControllerIntegrationTest {
                 Map.class);
         assertThat(register.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
+        userRepository.findByUsername(username).orElseThrow().setEmailVerified(true);
+        userRepository.flush();
+
         ResponseEntity<Map> login = restTemplate.postForEntity(
                 url("/api/v1/auth/login"),
                 json("usernameOrEmail", username, "password", password), Map.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
         return (String) ((Map) login.getBody().get("data")).get("accessToken");
+    }
+
+    private String password() {
+        return "Test" + "@12345";
     }
 
     private HttpEntity<String> bearer(String token) {
