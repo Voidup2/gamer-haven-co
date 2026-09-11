@@ -6,10 +6,12 @@ import com.gamesphere.auth.api.LogoutRequest;
 import com.gamesphere.auth.api.RefreshTokenRequest;
 import com.gamesphere.auth.api.RegisterRequest;
 import com.gamesphere.auth.api.RegisterResponse;
+import com.gamesphere.auth.api.VerifyEmailRequest;
 import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.UserRepository;
 import com.gamesphere.auth.service.AuthService;
 import com.gamesphere.auth.service.AuthenticationService;
+import com.gamesphere.auth.service.EmailVerificationService;
 import com.gamesphere.common.api.ApiResponse;
 import com.gamesphere.common.web.ResourceNotFoundException;
 import jakarta.validation.Valid;
@@ -27,12 +29,15 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthenticationService authenticationService;
+    private final EmailVerificationService emailVerificationService;
     private final UserRepository userRepository;
 
     public AuthController(AuthService authService, AuthenticationService authenticationService,
+                          EmailVerificationService emailVerificationService,
                           UserRepository userRepository) {
         this.authService = authService;
         this.authenticationService = authenticationService;
+        this.emailVerificationService = emailVerificationService;
         this.userRepository = userRepository;
     }
 
@@ -63,6 +68,13 @@ public class AuthController {
             @Valid @RequestBody LogoutRequest request) {
         authenticationService.logout(request.refreshToken());
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully", null));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request) {
+        emailVerificationService.verify(request.token());
+        return ResponseEntity.ok(ApiResponse.success("Email verified successfully", null));
     }
 
     @PostMapping("/logout-all")
