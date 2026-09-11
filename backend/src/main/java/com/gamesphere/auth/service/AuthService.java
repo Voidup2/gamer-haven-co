@@ -16,13 +16,16 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Transactional
@@ -50,6 +53,7 @@ public class AuthService {
         user.getRoles().add(userRole);
 
         User savedUser = userRepository.save(user);
+        emailVerificationService.sendVerificationEmail(savedUser);
 
         return new RegisterResponse(
                 savedUser.getId(),
