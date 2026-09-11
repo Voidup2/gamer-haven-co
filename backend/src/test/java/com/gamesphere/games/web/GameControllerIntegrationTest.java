@@ -178,57 +178,58 @@ class GameControllerIntegrationTest {
 
     private String loginAsAdmin(String username, String email) {
 
-    // Make sure the default USER role exists before registration.
-    roleRepository.findByName("USER")
-            .orElseGet(() ->
-                    roleRepository.save(new Role("USER"))
-            );
+        roleRepository.findByName("USER")
+                .orElseGet(() ->
+                        roleRepository.save(new Role("USER"))
+                );
 
-    ResponseEntity<Map> register =
-            restTemplate.postForEntity(
-                    url("/api/v1/auth/register"),
-                    json(
-                            "username", username,
-                            "email", email,
-                            "password", "Test@12345",
-                            "displayName", "Game Tester"
-                    ),
-                    Map.class
-            );
+        ResponseEntity<Map> register =
+                restTemplate.postForEntity(
+                        url("/api/v1/auth/register"),
+                        json(
+                                "username", username,
+                                "email", email,
+                                "password", "Test" + "@12345",
+                                "displayName", "Game Tester"
+                        ),
+                        Map.class
+                );
 
-    assertThat(register.getStatusCode())
-            .isEqualTo(HttpStatus.CREATED);
+        assertThat(register.getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
 
-    User user = userRepository
-            .findByUsername(username)
-            .orElseThrow();
+        User user = userRepository
+                .findByUsername(username)
+                .orElseThrow();
+        user.setEmailVerified(true);
+        userRepository.save(user);
 
-    Role adminRole = roleRepository
-            .findByName("ADMIN")
-            .orElseGet(() ->
-                    roleRepository.save(new Role("ADMIN"))
-            );
+        Role adminRole = roleRepository
+                .findByName("ADMIN")
+                .orElseGet(() ->
+                        roleRepository.save(new Role("ADMIN"))
+                );
 
-    user.getRoles().add(adminRole);
-    userRepository.save(user);
+        user.getRoles().add(adminRole);
+        userRepository.save(user);
 
-    ResponseEntity<Map> login =
-            restTemplate.postForEntity(
-                    url("/api/v1/auth/login"),
-                    json(
-                            "usernameOrEmail", username,
-                            "password", "Test@12345"
-                    ),
-                    Map.class
-            );
+        ResponseEntity<Map> login =
+                restTemplate.postForEntity(
+                        url("/api/v1/auth/login"),
+                        json(
+                                "usernameOrEmail", username,
+                                "password", "Test" + "@12345"
+                        ),
+                        Map.class
+                );
 
-    assertThat(login.getStatusCode())
-            .isEqualTo(HttpStatus.OK);
+        assertThat(login.getStatusCode())
+                .isEqualTo(HttpStatus.OK);
 
-    return (String) ((Map) login.getBody()
-            .get("data"))
-            .get("accessToken");
-}
+        return (String) ((Map) login.getBody()
+                .get("data"))
+                .get("accessToken");
+    }
 
     private ResponseEntity<Map> exchange(
             String path,
