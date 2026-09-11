@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -28,11 +29,12 @@ public class JwtService {
         this.expirationSeconds = expirationSeconds;
     }
 
-    public String generateAccessToken(User user) {
+    public String generateAccessToken(User user, UUID sessionId) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(user.getUsername())
                 .claim("userId", user.getId())
+                .claim("sessionId", sessionId.toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(expirationSeconds)))
                 .signWith(signingKey)
