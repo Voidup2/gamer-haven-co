@@ -50,6 +50,7 @@ public class AuthService {
                 passwordEncoder.encode(request.password()),
                 request.displayName()
         );
+        user.setEmailVerified(false);
         user.getRoles().add(userRole);
 
         User savedUser = userRepository.save(user);
