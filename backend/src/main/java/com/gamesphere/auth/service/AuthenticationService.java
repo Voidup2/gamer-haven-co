@@ -48,7 +48,8 @@ public class AuthenticationService {
                 .or(() -> userRepository.findByEmail(request.usernameOrEmail().trim().toLowerCase()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-        if (!user.isEnabled() || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!user.isEnabled() || !user.isEmailVerified()
+                || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid credentials");
         }
 
