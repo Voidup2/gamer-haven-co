@@ -38,6 +38,9 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -80,6 +83,7 @@ public class User {
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
     public boolean isEnabled() { return enabled; }
+    public boolean isEmailVerified() { return emailVerified; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public Set<Role> getRoles() { return roles; }
@@ -89,4 +93,5 @@ public class User {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
 }
