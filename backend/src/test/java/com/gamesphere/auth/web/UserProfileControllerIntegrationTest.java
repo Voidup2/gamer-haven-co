@@ -1,5 +1,7 @@
 package com.gamesphere.auth.web;
 
+import com.gamesphere.auth.domain.Role;
+import com.gamesphere.auth.repository.RoleRepository;
 import com.gamesphere.auth.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,9 @@ class UserProfileControllerIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
 
     @AfterEach
     void cleanUp() {
@@ -115,6 +120,9 @@ class UserProfileControllerIntegrationTest {
     }
 
     private String login(String username, String email, String password) {
+        roleRepository.findByName("USER")
+                .orElseGet(() -> roleRepository.save(new Role("USER")));
+
         ResponseEntity<Map> register = restTemplate.postForEntity(
                 url("/api/v1/auth/register"),
                 json("username", username, "email", email, "password", password, "displayName", username.equals("profileuser") ? "Profile User" : "Test User"),
