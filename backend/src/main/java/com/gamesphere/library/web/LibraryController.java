@@ -1,7 +1,6 @@
 package com.gamesphere.library.web;
 
 import com.gamesphere.common.api.ApiResponse;
-import com.gamesphere.library.domain.UserGameLibrary;
 import com.gamesphere.library.dto.LibraryGameResponse;
 import com.gamesphere.library.service.LibraryService;
 import org.springframework.http.HttpStatus;
@@ -31,12 +30,12 @@ public class LibraryController {
     public ResponseEntity<ApiResponse<LibraryGameResponse>> addGame(
             @PathVariable String gameId
     ) {
-        UserGameLibrary entry = libraryService.addGame(gameId);
+        LibraryGameResponse response = libraryService.addToLibrary(gameId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         "Game added to library",
-                        toResponse(entry)
+                        response
                 ));
     }
 
@@ -44,10 +43,7 @@ public class LibraryController {
     public ResponseEntity<ApiResponse<List<LibraryGameResponse>>> getLibrary() {
 
         List<LibraryGameResponse> response =
-                libraryService.getLibrary()
-                        .stream()
-                        .map(this::toResponse)
-                        .toList();
+                libraryService.getLibrary();
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -61,23 +57,13 @@ public class LibraryController {
     public ResponseEntity<ApiResponse<Void>> removeGame(
             @PathVariable String gameId
     ) {
-        libraryService.removeGame(gameId);
+        libraryService.removeFromLibrary(gameId);
 
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "Game removed from library",
                         null
                 )
-        );
-    }
-
-    private LibraryGameResponse toResponse(
-            UserGameLibrary entry
-    ) {
-        return new LibraryGameResponse(
-                entry.getGame().getId(),
-                entry.getGame().getTitle(),
-                entry.getAddedAt()
         );
     }
 }

@@ -402,7 +402,9 @@ class CommentControllerIntegrationTest {
     }
 
     private String loginAs(String username) throws Exception {
-
+        var user = userRepository.findByUsername(username).orElseThrow();
+        user.setEmailVerified(true);
+        userRepository.saveAndFlush(user);
         String body = objectMapper.writeValueAsString(
                 java.util.Map.of(
                         "usernameOrEmail",

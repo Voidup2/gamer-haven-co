@@ -39,7 +39,7 @@ public class User {
     private boolean enabled = true;
 
     @Column(name = "email_verified", nullable = false)
-    private boolean emailVerified = true;
+    private boolean emailVerified = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

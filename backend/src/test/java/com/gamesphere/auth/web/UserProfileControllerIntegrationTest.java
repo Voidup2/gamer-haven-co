@@ -129,8 +129,10 @@ class UserProfileControllerIntegrationTest {
                 Map.class);
         assertThat(register.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-        userRepository.findByUsername(username).orElseThrow().setEmailVerified(true);
-        userRepository.flush();
+        var user = userRepository.findByUsername(username).orElseThrow();
+        user.setEmailVerified(true);
+        userRepository.saveAndFlush(user);
+
 
         ResponseEntity<Map> login = restTemplate.postForEntity(
                 url("/api/v1/auth/login"),
