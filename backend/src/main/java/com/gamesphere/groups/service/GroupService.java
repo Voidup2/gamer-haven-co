@@ -80,7 +80,16 @@ public class GroupService {
     }
 
     @Transactional
-    public void delete(UUID id) { User user = currentUser(); groupRepository.delete(ownedGroup(id, user.getId())); }
+    public void delete(UUID id) {
+        User user = currentUser();
+        GameGroup group = ownedGroup(id, user.getId());
+
+        memberRepository.deleteAll(
+                memberRepository.findByGroupIdOrderByJoinedAtAsc(id)
+        );
+
+        groupRepository.delete(group);
+    }
 
     @Transactional
     public GroupResponse join(UUID id) {

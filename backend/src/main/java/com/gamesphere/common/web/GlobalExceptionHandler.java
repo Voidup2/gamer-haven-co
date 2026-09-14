@@ -1,6 +1,8 @@
 package com.gamesphere.common.web;
 
 import com.gamesphere.common.api.ApiResponse;
+import com.gamesphere.common.exception.ConflictException;
+import com.gamesphere.common.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
