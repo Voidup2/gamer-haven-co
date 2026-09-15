@@ -4,6 +4,7 @@ import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.UserRepository;
 import com.gamesphere.common.web.ConflictException;
 import com.gamesphere.common.web.ResourceNotFoundException;
+import com.gamesphere.games.domain.Game;
 import com.gamesphere.games.repository.GameRepository;
 import com.gamesphere.marketplace.api.GameListingRequest;
 import com.gamesphere.marketplace.domain.GameListing;
@@ -24,7 +25,6 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -39,6 +39,7 @@ class GameListingServiceTest {
     @Mock User currentUser;
     @Mock User seller;
     @Mock GameListing listing;
+    @Mock Game game;
 
     @InjectMocks GameListingService listingService;
 
@@ -51,7 +52,9 @@ class GameListingServiceTest {
     void ownerCanMarkActiveListingSold() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.ACTIVE);
+        givenOwnedListing(id);
+        givenListingStatus(GameListing.Status.ACTIVE);
+        givenListingResponseData();
 
         when(listingRepository.save(listing)).thenReturn(listing);
         when(ratingRepository.findAverageRatingBySellerId(1L)).thenReturn(null);
@@ -67,7 +70,9 @@ class GameListingServiceTest {
     void ownerCanRemoveActiveListing() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.ACTIVE);
+        givenOwnedListing(id);
+        givenListingStatus(GameListing.Status.ACTIVE);
+        givenListingResponseData();
         when(listingRepository.save(listing)).thenReturn(listing);
         when(ratingRepository.findAverageRatingBySellerId(1L)).thenReturn(null);
         when(ratingRepository.countBySellerId(1L)).thenReturn(0L);
@@ -81,7 +86,9 @@ class GameListingServiceTest {
     void ownerCanRestoreRemovedListing() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.REMOVED);
+        givenOwnedListing(id);
+        givenListingStatus(GameListing.Status.REMOVED);
+        givenListingResponseData();
         when(listingRepository.save(listing)).thenReturn(listing);
         when(ratingRepository.findAverageRatingBySellerId(1L)).thenReturn(null);
         when(ratingRepository.countBySellerId(1L)).thenReturn(0L);
@@ -95,7 +102,8 @@ class GameListingServiceTest {
     void ownerCannotChangeSoldListingBackToActive() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.SOLD);
+        givenOwnedListing(id);
+        givenListingStatus(GameListing.Status.SOLD);
 
         assertThrows(ConflictException.class,
                 () -> listingService.updateStatus(id, GameListing.Status.ACTIVE));
@@ -107,7 +115,8 @@ class GameListingServiceTest {
     void ownerCannotRemoveSoldListing() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.SOLD);
+        givenOwnedListing(id);
+        givenListingStatus(GameListing.Status.SOLD);
 
         assertThrows(ConflictException.class,
                 () -> listingService.updateStatus(id, GameListing.Status.REMOVED));
@@ -118,7 +127,8 @@ class GameListingServiceTest {
     void ownerCannotRepeatSameStatus() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.ACTIVE);
+        givenOwnedListing(id);
+        givenListingStatus(GameListing.Status.ACTIVE);
 
         assertThrows(ConflictException.class,
                 () -> listingService.updateStatus(id, GameListing.Status.ACTIVE));
@@ -141,7 +151,6 @@ class GameListingServiceTest {
 
     @Test
     void createRejectsUnknownGame() {
-        authenticateAs("seller", 1L);
         when(gameRepository.findById("missing-game")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
@@ -152,7 +161,7 @@ class GameListingServiceTest {
     @Test
     void createRejectsListingWithoutContactMethod() {
         authenticateAs("seller", 1L);
-        when(gameRepository.findById("game-1")).thenReturn(Optional.of(mock(com.gamesphere.games.domain.Game.class)));
+        when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
         GameListingRequest request = new GameListingRequest(
                 "Used Game", null, "Good condition", GameListing.Condition.GOOD,
@@ -181,7 +190,7 @@ class GameListingServiceTest {
     void updateRejectsMissingContactMethod() {
         UUID id = UUID.randomUUID();
         authenticateAs("seller", 1L);
-        givenOwnedListing(id, GameListing.Status.ACTIVE);
+        givenOwnedListing(id);
 
         GameListingRequest request = new GameListingRequest(
                 "Updated Game", null, "Updated description", GameListing.Condition.GOOD,
@@ -192,12 +201,21 @@ class GameListingServiceTest {
         verify(listingRepository, never()).save(any());
     }
 
-    private void givenOwnedListing(UUID id, GameListing.Status status) {
+    private void givenOwnedListing(UUID id) {
         when(listingRepository.findById(id)).thenReturn(Optional.of(listing));
         when(listing.getSeller()).thenReturn(seller);
         when(seller.getId()).thenReturn(1L);
         when(currentUser.getId()).thenReturn(1L);
+    }
+
+    private void givenListingStatus(GameListing.Status status) {
         when(listing.getStatus()).thenReturn(status);
+    }
+
+    private void givenListingResponseData() {
+        when(listing.getGame()).thenReturn(game);
+        when(game.getId()).thenReturn("game-1");
+        when(game.getTitle()).thenReturn("Test Game");
     }
 
     private void authenticateAs(String username, long userId) {
