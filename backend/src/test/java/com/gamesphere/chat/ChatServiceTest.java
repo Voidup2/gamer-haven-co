@@ -258,6 +258,8 @@ class ChatServiceTest {
         when(memberRepository.existsByRoomIdAndUserId(roomId, 1L)).thenReturn(false);
         when(memberRepository.save(any(ChatRoomMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.save(message)).thenReturn(message);
+        when(message.getId()).thenReturn(messageId);
+        when(user.getUsername()).thenReturn("admin");
 
         chatService.delete(messageId);
 
