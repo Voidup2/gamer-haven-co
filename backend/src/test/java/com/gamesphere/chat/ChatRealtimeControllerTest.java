@@ -18,6 +18,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,7 +57,8 @@ class ChatRealtimeControllerTest {
         controller.typing(new ChatRealtimeController.ChatTypingRequest(roomId, true), authentication);
 
         verify(chatService).assertCanAccess(roomId, user);
-        verify(messagingTemplate).convertAndSend(eq("/topic/chat/" + roomId + "/typing"), any(ChatTypingEvent.class));
+        verify(messagingTemplate).convertAndSend(eq("/topic/chat/" + roomId + "/typing"),
+                any(ChatTypingEvent.class));
         verifyNoMoreInteractions(messagingTemplate);
         org.junit.jupiter.api.Assertions.assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
@@ -70,6 +74,6 @@ class ChatRealtimeControllerTest {
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.typing(new ChatRealtimeController.ChatTypingRequest(roomId, true), authentication));
-        verify(messagingTemplate, never()).convertAndSend(anyString(), any());
+        verify(messagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
     }
 }
