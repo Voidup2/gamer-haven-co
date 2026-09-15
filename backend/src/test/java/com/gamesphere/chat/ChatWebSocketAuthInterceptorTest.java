@@ -53,7 +53,7 @@ class ChatWebSocketAuthInterceptorTest {
         when(jwtService.parse("token")).thenReturn(claims);
         when(claims.getSubject()).thenReturn("alice");
 
-        Message<byte[]> result = interceptor.preSend(connectMessage("Bearer token"), null);
+        Message<?> result = interceptor.preSend(connectMessage("Bearer token"), null);
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(result);
 
         assertNotNull(accessor.getUser());
