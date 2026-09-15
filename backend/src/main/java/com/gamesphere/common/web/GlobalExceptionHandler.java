@@ -2,23 +2,23 @@ package com.gamesphere.common.web;
 
 import com.gamesphere.common.api.ApiResponse;
 import com.gamesphere.common.exception.ConflictException;
-import com.gamesphere.common.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
+
+    @ExceptionHandler({ConflictException.class, com.gamesphere.common.web.ConflictException.class})
+    public ResponseEntity<ApiResponse<Void>> handleConflict(RuntimeException exception) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.failure(exception.getMessage()));
-}
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception) {
@@ -45,22 +45,22 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.failure(exception.getMessage()));
     }
-    @ExceptionHandler(ResourceNotFoundException.class)
-public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(    
-        ResourceNotFoundException exception) {
 
-    return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
-            .body(ApiResponse.failure(exception.getMessage()));
-}
+    @ExceptionHandler({com.gamesphere.common.exception.ResourceNotFoundException.class,
+            com.gamesphere.common.web.ResourceNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(RuntimeException exception) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.failure(exception.getMessage()));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
-public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
-        AccessDeniedException exception
-) {
-    return ResponseEntity
-            .status(HttpStatus.FORBIDDEN)
-            .body(ApiResponse.failure(exception.getMessage()));
-}
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException exception) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.failure(exception.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
         return ResponseEntity
