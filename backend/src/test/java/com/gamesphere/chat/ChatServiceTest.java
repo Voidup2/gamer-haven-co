@@ -169,6 +169,20 @@ class ChatServiceTest {
     }
 
     @Test
+    void editRejectsDeletedMessage() {
+        UUID messageId = UUID.randomUUID();
+        ChatMessage message = mock(ChatMessage.class);
+        authenticateAsUser(1L, "player");
+        when(messageRepository.findById(messageId)).thenReturn(Optional.of(message));
+        when(message.getId()).thenReturn(messageId);
+        when(message.getDeletedAt()).thenReturn(OffsetDateTime.now());
+
+        assertThrows(com.gamesphere.common.exception.ResourceNotFoundException.class,
+                () -> chatService.edit(messageId, new ChatDtos.EditMessageRequest("edited")));
+        verify(messageRepository, never()).save(any(ChatMessage.class));
+    }
+
+    @Test
     void deleteRejectsOtherUsersMessage() {
         UUID roomId = UUID.randomUUID();
         UUID messageId = UUID.randomUUID();
@@ -211,6 +225,20 @@ class ChatServiceTest {
         verify(message).setDeletedAt(any(OffsetDateTime.class));
         verify(messageRepository).save(message);
         verify(realtimePublisher).messageDeleted(roomId, messageId, 1L, "player");
+    }
+
+    @Test
+    void deleteRejectsAlreadyDeletedMessage() {
+        UUID messageId = UUID.randomUUID();
+        ChatMessage message = mock(ChatMessage.class);
+        authenticateAsUser(1L, "player");
+        when(messageRepository.findById(messageId)).thenReturn(Optional.of(message));
+        when(message.getId()).thenReturn(messageId);
+        when(message.getDeletedAt()).thenReturn(OffsetDateTime.now());
+
+        assertThrows(com.gamesphere.common.exception.ResourceNotFoundException.class,
+                () -> chatService.delete(messageId));
+        verify(messageRepository, never()).save(any(ChatMessage.class));
     }
 
     @Test
