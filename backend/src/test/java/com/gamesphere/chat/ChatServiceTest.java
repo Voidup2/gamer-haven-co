@@ -92,6 +92,7 @@ class ChatServiceTest {
         UUID roomId = UUID.randomUUID();
         authenticateAsUser(1L, "player");
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
+        when(room.getId()).thenReturn(roomId);
         when(room.getRoomType()).thenReturn(ChatRoomType.DIRECT);
         when(memberRepository.existsByRoomIdAndUserId(roomId, 1L)).thenReturn(false);
 
