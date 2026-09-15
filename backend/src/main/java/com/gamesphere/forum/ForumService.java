@@ -60,7 +60,12 @@ public class ForumService {
     @Transactional public void deleteTopic(UUID id) { ForumTopic topic = findTopic(id); assertOwnerOrAdmin(topic.getAuthor(), currentUser()); topicRepository.delete(topic); }
     @Transactional public ForumDtos.TopicResponse setLock(UUID id, boolean locked) { ForumTopic topic = findTopic(id); assertAdmin(currentUser()); topic.setLocked(locked); return toTopicResponse(topicRepository.save(topic)); }
     @Transactional public ForumDtos.TopicResponse setPinned(UUID id, boolean pinned) { ForumTopic topic = findTopic(id); assertAdmin(currentUser()); topic.setPinned(pinned); return toTopicResponse(topicRepository.save(topic)); }
-    public Page<ForumDtos.PostResponse> posts(UUID topicId, Pageable pageable) { findTopic(topicId); return postRepository.findByTopicId(topicId, pageable).map(this::toPostResponse); }
+
+    @Transactional(readOnly = true)
+    public Page<ForumDtos.PostResponse> posts(UUID topicId, Pageable pageable) {
+        findTopic(topicId);
+        return postRepository.findByTopicId(topicId, pageable).map(this::toPostResponse);
+    }
 
     @Transactional public ForumDtos.PostResponse createPost(UUID topicId, ForumDtos.CreatePostRequest request) {
         ForumTopic topic = findTopic(topicId); User user = currentUser();
