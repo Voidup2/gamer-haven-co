@@ -108,6 +108,7 @@ public class GameListingService {
     @Transactional
     public GameListingResponse updateStatus(UUID id, GameListing.Status status) {
         GameListing listing = findOwned(id);
+        requireOwnerStatusTransition(listing.getStatus(), status);
         listing.setStatus(status);
         return response(listingRepository.save(listing));
     }
@@ -127,6 +128,23 @@ public class GameListingService {
         }
         listing.setStatus(targetStatus);
         return response(listingRepository.save(listing));
+    }
+
+    private void requireOwnerStatusTransition(GameListing.Status currentStatus, GameListing.Status targetStatus) {
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("Status is required");
+        }
+        if (currentStatus == targetStatus) {
+            throw new ConflictException("Listing is already in the requested status");
+        }
+        if (currentStatus == GameListing.Status.ACTIVE
+                && (targetStatus == GameListing.Status.SOLD || targetStatus == GameListing.Status.REMOVED)) {
+            return;
+        }
+        if (currentStatus == GameListing.Status.REMOVED && targetStatus == GameListing.Status.ACTIVE) {
+            return;
+        }
+        throw new ConflictException("Invalid listing status transition");
     }
 
     private GameListingResponse response(GameListing listing) {
