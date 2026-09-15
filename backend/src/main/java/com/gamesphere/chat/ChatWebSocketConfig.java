@@ -1,5 +1,6 @@
 package com.gamesphere.chat;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -11,9 +12,13 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final ChatWebSocketAuthInterceptor authInterceptor;
+    private final String[] allowedOrigins;
 
-    public ChatWebSocketConfig(ChatWebSocketAuthInterceptor authInterceptor) {
+    public ChatWebSocketConfig(
+            ChatWebSocketAuthInterceptor authInterceptor,
+            @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         this.authInterceptor = authInterceptor;
+        this.allowedOrigins = allowedOrigins.split(",");
     }
 
     @Override
@@ -30,6 +35,6 @@ public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(allowedOrigins);
     }
 }
