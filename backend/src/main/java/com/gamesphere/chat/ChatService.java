@@ -42,8 +42,7 @@ public class ChatService {
                        GameGroupRepository groupRepository, GroupMemberRepository groupMemberRepository,
                        ChatRealtimePublisher realtimePublisher, NotificationService notificationService) {
         this.roomRepository = roomRepository; this.memberRepository = memberRepository; this.messageRepository = messageRepository;
-        this.userRepository = userRepository; this.blockRepository = blockRepository; this.gameRepository = gameRepository;
-        this.groupRepository = groupRepository; this.groupMemberRepository = groupMemberRepository; this.realtimePublisher = realtimePublisher;
+        this.userRepository = userRepository; this.blockRepository = blockRepository; this.gameRepository = gameRepository; this.groupRepository = groupRepository; this.groupMemberRepository = groupMemberRepository; this.realtimePublisher = realtimePublisher;
         this.notificationService = notificationService;
     }
 
@@ -115,14 +114,14 @@ public class ChatService {
 
     @Transactional public ChatDtos.MessageResponse edit(UUID messageId, ChatDtos.EditMessageRequest request) {
         User user = currentUser(); ChatMessage message = messageRepository.findById(messageId).orElseThrow(() -> new ResourceNotFoundException("Message not found: " + messageId));
-        ensureCanAccess(message.getRoom(), user); if (!message.getSender().getId().equals(user.getId()) && !isAdmin()) throw new AccessDeniedException("You can only edit your own messages");
+        ensureMessageActive(message); ensureCanAccess(message.getRoom(), user); if (!message.getSender().getId().equals(user.getId()) && !isAdmin()) throw new AccessDeniedException("You can only edit your own messages");
         message.setContent(request.content().trim()); message.setEditedAt(OffsetDateTime.now()); ChatDtos.MessageResponse response = toMessageResponse(messageRepository.save(message));
         realtimePublisher.messageEdited(response); return response;
     }
 
     @Transactional public void delete(UUID messageId) {
         User user = currentUser(); ChatMessage message = messageRepository.findById(messageId).orElseThrow(() -> new ResourceNotFoundException("Message not found: " + messageId));
-        ensureCanAccess(message.getRoom(), user); if (!message.getSender().getId().equals(user.getId()) && !isAdmin()) throw new AccessDeniedException("You can only delete your own messages");
+        ensureMessageActive(message); ensureCanAccess(message.getRoom(), user); if (!message.getSender().getId().equals(user.getId()) && !isAdmin()) throw new AccessDeniedException("You can only delete your own messages");
         message.setDeletedAt(OffsetDateTime.now()); messageRepository.save(message);
         realtimePublisher.messageDeleted(message.getRoom().getId(), message.getId(), user.getId(), user.getUsername());
     }
@@ -137,6 +136,7 @@ public class ChatService {
 
     private ChatDtos.RoomResponse toRoomResponse(ChatRoom room) { String gameId = room.getGame() == null ? null : room.getGame().getId(); UUID groupId = room.getGroup() == null ? null : room.getGroup().getId(); return new ChatDtos.RoomResponse(room.getId(), room.getRoomType(), room.getRoomKey(), room.getName(), gameId, groupId, memberRepository.countByRoomId(room.getId()), room.getCreatedAt()); }
     private ChatDtos.MessageResponse toMessageResponse(ChatMessage message) { User sender = message.getSender(); return new ChatDtos.MessageResponse(message.getId(), message.getRoom().getId(), sender.getId(), sender.getUsername(), sender.getDisplayName(), message.getContent(), message.getCreatedAt(), message.getEditedAt()); }
+    private void ensureMessageActive(ChatMessage message) { if (message.getDeletedAt() != null) throw new ResourceNotFoundException("Message not found: " + message.getId()); }
     private ChatRoom createOrJoin(ChatRoomType type, String key, String name, Game game, GameGroup group) { User user = currentUser(); ChatRoom room = roomRepository.findByRoomKey(key).orElseGet(() -> roomRepository.save(new ChatRoom(UUID.randomUUID(), type, key, name, game, group, user))); ensureMember(room, user); return room; }
     private void ensureMember(ChatRoom room, User user) { if (!memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) memberRepository.save(new ChatRoomMember(room, user)); }
     private void ensureCanAccess(ChatRoom room, User user) {
