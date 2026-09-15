@@ -7,6 +7,7 @@ import com.gamesphere.common.web.ResourceNotFoundException;
 import com.gamesphere.games.domain.Game;
 import com.gamesphere.games.repository.GameRepository;
 import com.gamesphere.library.domain.UserGameWishlist;
+import com.gamesphere.library.dto.WishlistGameResponse;
 import com.gamesphere.library.repository.UserGameWishlistRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,8 +34,7 @@ public class WishlistService {
     }
 
     @Transactional
-    public UserGameWishlist addGame(String gameId) {
-
+    public WishlistGameResponse addGame(String gameId) {
         User user = getCurrentUser();
 
         Game game = gameRepository.findById(gameId)
@@ -42,69 +42,56 @@ public class WishlistService {
                         new ResourceNotFoundException("Game not found")
                 );
 
-        boolean alreadyExists =
-                wishlistRepository.existsByUserIdAndGameId(
-                        user.getId(),
-                        gameId
-                );
-
-        if (alreadyExists) {
-            throw new ConflictException(
-                    "Game is already in your wishlist"
-            );
+        if (wishlistRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
+            throw new ConflictException("Game is already in your wishlist");
         }
 
         UserGameWishlist wishlistEntry =
-                new UserGameWishlist(user, game);
+                wishlistRepository.save(new UserGameWishlist(user, game));
 
-        return wishlistRepository.save(wishlistEntry);
+        return toResponse(wishlistEntry);
     }
 
     @Transactional(readOnly = true)
-    public List<UserGameWishlist> getWishlist() {
-
+    public List<WishlistGameResponse> getWishlist() {
         User user = getCurrentUser();
 
-        return wishlistRepository.findByUserId(user.getId());
+        return wishlistRepository.findByUserId(user.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional
     public void removeGame(String gameId) {
-
         User user = getCurrentUser();
 
-        boolean exists =
-                wishlistRepository.existsByUserIdAndGameId(
-                        user.getId(),
-                        gameId
-                );
-
-        if (!exists) {
-            throw new ResourceNotFoundException(
-                    "Game is not in your wishlist"
-            );
+        if (!wishlistRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
+            throw new ResourceNotFoundException("Game is not in your wishlist");
         }
 
-        wishlistRepository.deleteByUserIdAndGameId(
-                user.getId(),
-                gameId
+        wishlistRepository.deleteByUserIdAndGameId(user.getId(), gameId);
+    }
+
+    private WishlistGameResponse toResponse(UserGameWishlist entry) {
+        return new WishlistGameResponse(
+                entry.getGame().getId(),
+                entry.getGame().getTitle(),
+                entry.getAddedAt()
         );
     }
 
     private User getCurrentUser() {
-
         Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+                SecurityContextHolder.getContext().getAuthentication();
 
-        String username = authentication.getName();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResourceNotFoundException("Authenticated user not found");
+        }
 
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Authenticated user not found"
-                        )
+                        new ResourceNotFoundException("Authenticated user not found")
                 );
     }
 }
