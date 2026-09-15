@@ -17,6 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -313,7 +314,7 @@ class ChatServiceTest {
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getName()).thenReturn(username);
         when(authentication.getPrincipal()).thenReturn(user);
-        when(authentication.getAuthorities()).thenReturn(List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        when(authentication.getAuthorities()).thenReturn(List.<GrantedAuthority>of(new SimpleGrantedAuthority("ROLE_ADMIN")));
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
         when(user.getId()).thenReturn(userId);
         SecurityContextHolder.getContext().setAuthentication(authentication);
