@@ -1,7 +1,6 @@
 package com.gamesphere.library.web;
 
 import com.gamesphere.common.api.ApiResponse;
-import com.gamesphere.library.domain.UserGameWishlist;
 import com.gamesphere.library.dto.WishlistGameResponse;
 import com.gamesphere.library.service.WishlistService;
 import org.springframework.http.HttpStatus;
@@ -31,23 +30,18 @@ public class WishlistController {
     public ResponseEntity<ApiResponse<WishlistGameResponse>> addGame(
             @PathVariable String gameId
     ) {
-        UserGameWishlist entry = wishlistService.addGame(gameId);
+        WishlistGameResponse response = wishlistService.addGame(gameId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         "Game added to wishlist",
-                        toResponse(entry)
+                        response
                 ));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<WishlistGameResponse>>> getWishlist() {
-
-        List<WishlistGameResponse> response =
-                wishlistService.getWishlist()
-                        .stream()
-                        .map(this::toResponse)
-                        .toList();
+        List<WishlistGameResponse> response = wishlistService.getWishlist();
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -68,16 +62,6 @@ public class WishlistController {
                         "Game removed from wishlist",
                         null
                 )
-        );
-    }
-
-    private WishlistGameResponse toResponse(
-            UserGameWishlist entry
-    ) {
-        return new WishlistGameResponse(
-                entry.getGame().getId(),
-                entry.getGame().getTitle(),
-                entry.getAddedAt()
         );
     }
 }
