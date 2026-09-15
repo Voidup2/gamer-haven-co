@@ -160,7 +160,7 @@ class GameListingServiceTest {
 
     @Test
     void createRejectsListingWithoutContactMethod() {
-        authenticateAs("seller", 1L);
+        authenticateWithoutUserId("seller");
         when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
         GameListingRequest request = new GameListingRequest(
@@ -223,6 +223,13 @@ class GameListingServiceTest {
         when(authentication.getName()).thenReturn(username);
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(currentUser));
         when(currentUser.getId()).thenReturn(userId);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void authenticateWithoutUserId(String username) {
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getName()).thenReturn(username);
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(currentUser));
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
