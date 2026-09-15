@@ -32,7 +32,7 @@ public class ChatWebSocketController {
             UUID roomId = UUID.fromString(request.roomId());
             ChatDtos.MessageResponse response = chatService.send(roomId,
                     new ChatDtos.SendMessageRequest(request.content()));
-            messagingTemplate.convertAndSend("/topic/chat/" + roomId, response);
+            messagingTemplate.convertAndSend("/topic/chat/" + roomId + "/events", response);
         } finally {
             SecurityContextHolder.clearContext();
         }
