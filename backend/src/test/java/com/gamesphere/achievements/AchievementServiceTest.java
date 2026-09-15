@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -97,7 +96,6 @@ class AchievementServiceTest {
     private void authenticateAsAdmin() {
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         when(authentication.isAuthenticated()).thenReturn(true);
-        when(authentication.getPrincipal()).thenReturn("admin");
         when(authentication.getName()).thenReturn("admin");
         when(user.getRoles()).thenReturn(new HashSet<>(Set.of(adminRole)));
         when(adminRole.getName()).thenReturn("ADMIN");
@@ -107,7 +105,6 @@ class AchievementServiceTest {
     private void authenticateAsUser() {
         when(userRepository.findByUsername("player")).thenReturn(Optional.of(user));
         when(authentication.isAuthenticated()).thenReturn(true);
-        when(authentication.getPrincipal()).thenReturn("player");
         when(authentication.getName()).thenReturn("player");
         when(user.getId()).thenReturn(1L);
         SecurityContextHolder.getContext().setAuthentication(authentication);
