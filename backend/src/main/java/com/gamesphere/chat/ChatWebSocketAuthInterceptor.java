@@ -7,6 +7,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -36,8 +37,10 @@ public class ChatWebSocketAuthInterceptor implements ChannelInterceptor {
             if (username == null || username.isBlank()) {
                 throw new IllegalArgumentException("Invalid WebSocket token");
             }
-            Authentication authentication = new UsernamePasswordAuthenticationToken(username, null, java.util.List.of());
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    username, null, java.util.List.of());
             accessor.setUser(authentication);
+            return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
         }
         return message;
     }
