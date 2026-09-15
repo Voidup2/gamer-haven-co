@@ -280,8 +280,6 @@ class ChatServiceTest {
         when(memberRepository.existsByRoomIdAndUserId(roomId, 1L)).thenReturn(true);
         when(memberRepository.findOtherUser(roomId, 1L)).thenReturn(Optional.of(recipient));
         when(recipient.getId()).thenReturn(2L);
-        when(recipient.getDisplayName()).thenReturn("Other Player");
-        when(recipient.getUsername()).thenReturn("other");
         when(blockRepository.existsByBlockerIdAndBlockedId(1L, 2L)).thenReturn(false);
         when(blockRepository.existsByBlockerIdAndBlockedId(2L, 1L)).thenReturn(false);
         when(messageRepository.save(any(ChatMessage.class))).thenReturn(saved);
