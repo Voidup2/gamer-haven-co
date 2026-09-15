@@ -652,7 +652,7 @@ class ForumControllerIntegrationTest {
                 "/api/v1/auth/login",
                 json(
                         "usernameOrEmail", username,
-                        "password", username
+                        "password", "Test@12345"
                 ),
                 Map.class
         );
@@ -666,12 +666,14 @@ class ForumControllerIntegrationTest {
     }
 
     private void createUserIfNeeded(String username, String email) {
+    reset(emailSender);
+
     ResponseEntity<Map> response = restTemplate.postForEntity(
             "/api/v1/auth/register",
             json(
                     "username", username,
                     "email", email,
-                    "password", username,
+                    "password", "Test@12345",
                     "displayName", "Test User"
             ),
             Map.class
