@@ -106,7 +106,6 @@ class AchievementServiceTest {
         when(userRepository.findByUsername("player")).thenReturn(Optional.of(user));
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getName()).thenReturn("player");
-        when(user.getId()).thenReturn(1L);
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
