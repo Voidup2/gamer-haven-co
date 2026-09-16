@@ -102,17 +102,26 @@ class NotificationPreferencesServiceTest {
     void updateCreatesPreferencesWhenMissing() {
         authenticate();
         when(repository.findById(1L)).thenReturn(Optional.empty());
-        when(repository.save(any(NotificationPreferences.class))).thenReturn(preferences);
-        stubDisabled();
+        when(repository.save(any(NotificationPreferences.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         NotificationPreferencesRequest request =
                 new NotificationPreferencesRequest(false, false, true, false, true);
 
         NotificationPreferencesResponse response = service.update(request);
 
-        assertNotNull(response);
-        verify(repository).save(any(NotificationPreferences.class));
-        verify(preferences).update(false, false, true, false, true);
+        assertFalse(response.marketplaceEnabled());
+        assertFalse(response.wishlistEnabled());
+        assertTrue(response.upcomingReleaseEnabled());
+        assertFalse(response.replyEnabled());
+        assertTrue(response.mentionEnabled());
+
+        verify(repository).save(argThat(saved ->
+                !saved.isMarketplaceEnabled()
+                        && !saved.isWishlistEnabled()
+                        && saved.isUpcomingReleaseEnabled()
+                        && !saved.isReplyEnabled()
+                        && saved.isMentionEnabled()));
     }
 
     @Test
