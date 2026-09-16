@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Service
 public class UserProfileService {
@@ -19,14 +20,17 @@ public class UserProfileService {
     private final UserRepository userRepository;
     private final AuthSessionRepository authSessionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public UserProfileService(
             UserRepository userRepository,
             AuthSessionRepository authSessionRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Transactional(readOnly = true)
@@ -37,15 +41,24 @@ public class UserProfileService {
     @Transactional
     public UserProfileResponse updateProfile(String username, UpdateProfileRequest request) {
         User user = findUser(username);
+        boolean emailChanged = !user.getEmail().equalsIgnoreCase(request.email().trim());
 
-        userRepository.findByEmail(request.email())
+        userRepository.findByEmail(request.email().trim().toLowerCase())
                 .filter(existing -> !existing.getId().equals(user.getId()))
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("Email is already in use");
                 });
 
-        user.setEmail(request.email());
+        user.setEmail(request.email().trim());
         user.setDisplayName(request.displayName());
+
+        if (emailChanged) {
+            user.setEmailVerified(false);
+            userRepository.save(user);
+            authSessionRepository.revokeAllForUser(user.getId(), OffsetDateTime.now(ZoneOffset.UTC));
+            emailVerificationService.sendVerificationEmail(user);
+        }
+
         return UserProfileResponse.from(userRepository.save(user));
     }
 
@@ -67,7 +80,7 @@ public class UserProfileService {
         // A password change invalidates every existing access/refresh session.
         // JwtAuthenticationFilter checks session state on each request, so this
         // also makes previously issued access tokens unusable immediately.
-        authSessionRepository.revokeAllForUser(user.getId(), OffsetDateTime.now());
+        authSessionRepository.revokeAllForUser(user.getId(), OffsetDateTime.now(ZoneOffset.UTC));
     }
 
     private User findUser(String username) {
