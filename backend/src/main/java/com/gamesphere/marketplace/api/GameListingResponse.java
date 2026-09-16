@@ -31,13 +31,24 @@ public record GameListingResponse(
         OffsetDateTime updatedAt
 ) {
     public static GameListingResponse from(GameListing listing, double sellerRating, long sellerReviewCount) {
+        return from(listing, sellerRating, sellerReviewCount, true);
+    }
+
+    public static GameListingResponse publicView(GameListing listing, double sellerRating, long sellerReviewCount) {
+        return from(listing, sellerRating, sellerReviewCount, false);
+    }
+
+    private static GameListingResponse from(GameListing listing, double sellerRating, long sellerReviewCount,
+                                            boolean includeContact) {
         return new GameListingResponse(
                 listing.getId(), listing.getGame().getId(), listing.getGame().getTitle(),
                 listing.getSeller().getId(), listing.getSeller().getUsername(), listing.getSeller().getDisplayName(),
                 sellerRating, sellerReviewCount,
                 listing.getTitle(), listing.getImageUrl(), listing.getDescription(), listing.getCondition(),
-                listing.getPrice(), listing.getPlatform(), listing.getLocation(), listing.getContactEmail(),
-                listing.getContactPhone(), listing.isBoxIncluded(), listing.isManualIncluded(), listing.getStatus(),
+                listing.getPrice(), listing.getPlatform(), listing.getLocation(),
+                includeContact ? listing.getContactEmail() : null,
+                includeContact ? listing.getContactPhone() : null,
+                listing.isBoxIncluded(), listing.isManualIncluded(), listing.getStatus(),
                 listing.getCreatedAt(), listing.getUpdatedAt()
         );
     }
