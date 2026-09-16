@@ -4,20 +4,29 @@ import com.gamesphere.auth.api.ChangePasswordRequest;
 import com.gamesphere.auth.api.UpdateProfileRequest;
 import com.gamesphere.auth.api.UserProfileResponse;
 import com.gamesphere.auth.domain.User;
+import com.gamesphere.auth.repository.AuthSessionRepository;
 import com.gamesphere.auth.repository.UserRepository;
+import com.gamesphere.common.exception.ResourceNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+
 @Service
 public class UserProfileService {
 
     private final UserRepository userRepository;
+    private final AuthSessionRepository authSessionRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserProfileService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserProfileService(
+            UserRepository userRepository,
+            AuthSessionRepository authSessionRepository,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -55,10 +64,15 @@ public class UserProfileService {
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+
+        // A password change invalidates every existing access/refresh session.
+        // JwtAuthenticationFilter checks session state on each request, so this
+        // also makes previously issued access tokens unusable immediately.
+        authSessionRepository.revokeAllForUser(user.getId(), OffsetDateTime.now());
     }
 
     private User findUser(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }
