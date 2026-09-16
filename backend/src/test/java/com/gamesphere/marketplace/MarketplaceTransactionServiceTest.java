@@ -49,6 +49,7 @@ class MarketplaceTransactionServiceTest {
     @Mock User buyer;
     @Mock User seller;
     @Mock User admin;
+    @Mock User otherUser;
     @Mock GameListing listing;
     @Mock Game game;
     @Mock MarketplaceTransaction transaction;
@@ -74,17 +75,8 @@ class MarketplaceTransactionServiceTest {
         when(listing.getPrice()).thenReturn(new BigDecimal("25.00"));
         when(transactionRepository.existsByListingIdAndStatus(listingId, MarketplaceTransaction.Status.PENDING)).thenReturn(false);
         when(transactionRepository.existsByListingIdAndBuyerId(listingId, 2L)).thenReturn(false);
-        when(game.getId()).thenReturn("game-1");
-        when(listing.getGame()).thenReturn(game);
         MarketplaceTransaction saved = mock(MarketplaceTransaction.class);
-        when(saved.getId()).thenReturn(UUID.randomUUID());
-        when(saved.getListing()).thenReturn(listing);
-        when(saved.getBuyer()).thenReturn(buyer);
-        when(saved.getSeller()).thenReturn(seller);
-        when(saved.getAmount()).thenReturn(new BigDecimal("25.00"));
-        when(saved.getStatus()).thenReturn(MarketplaceTransaction.Status.PENDING);
-        when(saved.getCreatedAt()).thenReturn(OffsetDateTime.now());
-        when(saved.getUpdatedAt()).thenReturn(OffsetDateTime.now());
+        givenResponseFields(saved, listing, buyer, seller, MarketplaceTransaction.Status.PENDING);
         when(transactionRepository.save(any(MarketplaceTransaction.class))).thenReturn(saved);
 
         MarketplaceTransactionResponse response = transactionService.initiate(listingId);
@@ -98,7 +90,7 @@ class MarketplaceTransactionServiceTest {
     @Test
     void initiateRejectsUnknownListing() {
         UUID listingId = UUID.randomUUID();
-        authenticateAs("buyer", 2L, buyer);
+        authenticateWithoutUserId("buyer", buyer);
         when(listingRepository.findById(listingId)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> transactionService.initiate(listingId));
@@ -108,7 +100,7 @@ class MarketplaceTransactionServiceTest {
     @Test
     void initiateRejectsInactiveListing() {
         UUID listingId = UUID.randomUUID();
-        authenticateAs("buyer", 2L, buyer);
+        authenticateWithoutUserId("buyer", buyer);
         givenListing(listingId, GameListing.Status.SOLD);
 
         assertThrows(ConflictException.class, () -> transactionService.initiate(listingId));
@@ -157,8 +149,8 @@ class MarketplaceTransactionServiceTest {
     @Test
     void findByIdRejectsUnrelatedUser() {
         UUID id = UUID.randomUUID();
-        authenticateAs("other", 3L, buyer);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("other", otherUser);
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
 
         assertThrows(AccessDeniedException.class, () -> transactionService.findById(id));
     }
@@ -166,8 +158,9 @@ class MarketplaceTransactionServiceTest {
     @Test
     void findByIdAllowsBuyer() {
         UUID id = UUID.randomUUID();
-        authenticateAs("buyer", 2L, buyer);
-        MarketplaceTransactionResponse expected = givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("buyer", buyer);
+        when(buyer.getId()).thenReturn(2L);
+        MarketplaceTransactionResponse expected = givenResponseTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
 
         MarketplaceTransactionResponse actual = transactionService.findById(id);
 
@@ -177,8 +170,9 @@ class MarketplaceTransactionServiceTest {
     @Test
     void completeRejectsNonSeller() {
         UUID id = UUID.randomUUID();
-        authenticateAs("buyer", 2L, buyer);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("buyer", buyer);
+        when(buyer.getId()).thenReturn(2L);
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
 
         assertThrows(AccessDeniedException.class, () -> transactionService.complete(id));
         verify(transactionRepository, never()).save(any());
@@ -187,8 +181,9 @@ class MarketplaceTransactionServiceTest {
     @Test
     void completeRejectsNonPendingTransaction() {
         UUID id = UUID.randomUUID();
-        authenticateAs("seller", 1L, seller);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.CANCELLED);
+        authenticateWithoutUserId("seller", seller);
+        when(seller.getId()).thenReturn(1L);
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.CANCELLED);
 
         assertThrows(ConflictException.class, () -> transactionService.complete(id));
         verify(transactionRepository, never()).save(any());
@@ -197,8 +192,9 @@ class MarketplaceTransactionServiceTest {
     @Test
     void completeRejectsInactiveListing() {
         UUID id = UUID.randomUUID();
-        authenticateAs("seller", 1L, seller);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("seller", seller);
+        when(seller.getId()).thenReturn(1L);
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
         when(transaction.getListing()).thenReturn(listing);
         when(listing.getStatus()).thenReturn(GameListing.Status.REMOVED);
 
@@ -209,14 +205,21 @@ class MarketplaceTransactionServiceTest {
     @Test
     void completeMarksTransactionAndListingSold() {
         UUID id = UUID.randomUUID();
-        authenticateAs("seller", 1L, seller);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("seller", seller);
+        when(seller.getId()).thenReturn(1L);
+        when(seller.getUsername()).thenReturn("seller");
+        when(buyer.getId()).thenReturn(2L);
+        when(buyer.getUsername()).thenReturn("buyer");
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
         when(transaction.getListing()).thenReturn(listing);
         when(listing.getStatus()).thenReturn(GameListing.Status.ACTIVE);
         when(listing.getTitle()).thenReturn("Test Game");
         when(listing.getId()).thenReturn(UUID.randomUUID());
-        when(buyer.getUsername()).thenReturn("buyer");
-        when(seller.getUsername()).thenReturn("seller");
+        when(listing.getGame()).thenReturn(game);
+        when(game.getId()).thenReturn("game-1");
+        when(transaction.getAmount()).thenReturn(new BigDecimal("25.00"));
+        when(transaction.getCreatedAt()).thenReturn(OffsetDateTime.now());
+        when(transaction.getUpdatedAt()).thenReturn(OffsetDateTime.now());
         when(transactionRepository.save(transaction)).thenReturn(transaction);
         when(transaction.getStatus()).thenReturn(MarketplaceTransaction.Status.COMPLETED);
 
@@ -233,8 +236,8 @@ class MarketplaceTransactionServiceTest {
     @Test
     void cancelRejectsUnrelatedUser() {
         UUID id = UUID.randomUUID();
-        authenticateAs("other", 3L, buyer);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("other", otherUser);
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
 
         assertThrows(AccessDeniedException.class, () -> transactionService.cancel(id));
         verify(transactionRepository, never()).save(any());
@@ -243,13 +246,23 @@ class MarketplaceTransactionServiceTest {
     @Test
     void cancelAllowsBuyer() {
         UUID id = UUID.randomUUID();
-        authenticateAs("buyer", 2L, buyer);
-        givenTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
+        authenticateWithoutUserId("buyer", buyer);
+        when(buyer.getId()).thenReturn(2L);
+        when(seller.getId()).thenReturn(1L);
+        when(seller.getUsername()).thenReturn("seller");
+        givenAuthorizationTransaction(id, 1L, 2L, MarketplaceTransaction.Status.PENDING);
         when(transaction.getListing()).thenReturn(listing);
         when(listing.getTitle()).thenReturn("Test Game");
-        when(seller.getUsername()).thenReturn("seller");
         when(transactionRepository.save(transaction)).thenReturn(transaction);
         when(transaction.getStatus()).thenReturn(MarketplaceTransaction.Status.CANCELLED);
+        when(transaction.getId()).thenReturn(id);
+        when(transaction.getAmount()).thenReturn(new BigDecimal("25.00"));
+        when(transaction.getCreatedAt()).thenReturn(OffsetDateTime.now());
+        when(transaction.getUpdatedAt()).thenReturn(OffsetDateTime.now());
+        when(listing.getId()).thenReturn(UUID.randomUUID());
+        when(listing.getGame()).thenReturn(game);
+        when(game.getId()).thenReturn("game-1");
+        when(buyer.getUsername()).thenReturn("buyer");
 
         MarketplaceTransactionResponse response = transactionService.cancel(id);
 
@@ -260,7 +273,8 @@ class MarketplaceTransactionServiceTest {
 
     @Test
     void findMineAsBuyerUsesBuyerRepositoryQuery() {
-        authenticateAs("buyer", 2L, buyer);
+        authenticateWithoutUserId("buyer", buyer);
+        when(buyer.getId()).thenReturn(2L);
         PageRequest pageable = PageRequest.of(0, 20);
         when(transactionRepository.findByBuyerIdOrderByCreatedAtDesc(2L, pageable)).thenReturn(new PageImpl<>(List.of()));
 
@@ -272,7 +286,8 @@ class MarketplaceTransactionServiceTest {
 
     @Test
     void findMineAsSellerUsesStatusQuery() {
-        authenticateAs("seller", 1L, seller);
+        authenticateWithoutUserId("seller", seller);
+        when(seller.getId()).thenReturn(1L);
         PageRequest pageable = PageRequest.of(0, 20);
         when(transactionRepository.findBySellerIdAndStatusOrderByCreatedAtDesc(1L, MarketplaceTransaction.Status.COMPLETED, pageable)).thenReturn(new PageImpl<>(List.of()));
 
@@ -284,7 +299,8 @@ class MarketplaceTransactionServiceTest {
 
     @Test
     void findAllRejectsNonAdmin() {
-        authenticateAs("seller", 1L, seller);
+        authenticateWithoutUserId("seller", seller);
+        when(seller.getRoles()).thenReturn(Set.of());
 
         assertThrows(AccessDeniedException.class,
                 () -> transactionService.findAll(null, PageRequest.of(0, 20)));
@@ -292,9 +308,9 @@ class MarketplaceTransactionServiceTest {
 
     @Test
     void findAllAllowsAdmin() {
-        authenticateAs("admin", 99L, admin);
-        when(adminRole.getName()).thenReturn("ADMIN");
+        authenticateWithoutUserId("admin", admin);
         when(admin.getRoles()).thenReturn(Set.of(adminRole));
+        when(adminRole.getName()).thenReturn("ADMIN");
         PageRequest pageable = PageRequest.of(0, 20);
         when(transactionRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(new PageImpl<>(List.of()));
 
@@ -304,12 +320,16 @@ class MarketplaceTransactionServiceTest {
         verify(transactionRepository).findAllByOrderByCreatedAtDesc(pageable);
     }
 
-    private void authenticateAs(String username, long userId, User user) {
+    private void authenticateWithoutUserId(String username, User currentUser) {
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
-        when(user.getId()).thenReturn(userId);
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(currentUser));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void authenticateAs(String username, long userId, User currentUser) {
+        authenticateWithoutUserId(username, currentUser);
+        when(currentUser.getId()).thenReturn(userId);
     }
 
     private void givenListing(UUID id, GameListing.Status status) {
@@ -317,15 +337,18 @@ class MarketplaceTransactionServiceTest {
         when(listing.getStatus()).thenReturn(status);
     }
 
-    private MarketplaceTransactionResponse givenTransaction(UUID id, long sellerId, long buyerId, MarketplaceTransaction.Status status) {
+    private void givenAuthorizationTransaction(UUID id, long sellerId, long buyerId, MarketplaceTransaction.Status status) {
         when(transactionRepository.findWithLockById(id)).thenReturn(Optional.of(transaction));
-        when(transactionRepository.findById(id)).thenReturn(Optional.of(transaction));
         when(transaction.getId()).thenReturn(id);
         when(transaction.getSeller()).thenReturn(seller);
         when(transaction.getBuyer()).thenReturn(buyer);
         when(seller.getId()).thenReturn(sellerId);
         when(buyer.getId()).thenReturn(buyerId);
         when(transaction.getStatus()).thenReturn(status);
+    }
+
+    private MarketplaceTransactionResponse givenResponseTransaction(UUID id, long sellerId, long buyerId, MarketplaceTransaction.Status status) {
+        givenAuthorizationTransaction(id, sellerId, buyerId, status);
         when(transaction.getListing()).thenReturn(listing);
         when(listing.getId()).thenReturn(UUID.randomUUID());
         when(listing.getTitle()).thenReturn("Test Game");
@@ -338,4 +361,24 @@ class MarketplaceTransactionServiceTest {
         when(transaction.getUpdatedAt()).thenReturn(OffsetDateTime.now());
         return MarketplaceTransactionResponse.from(transaction);
     }
+
+    private void givenResponseFields(MarketplaceTransactionResponseSource source, GameListing listing, User buyer, User seller, MarketplaceTransaction.Status status) {
+        // This overload is intentionally not used.
+    }
+
+    private void givenResponseFields(MarketplaceTransaction transactionSource, GameListing listing, User buyer, User seller, MarketplaceTransaction.Status status) {
+        when(transactionSource.getListing()).thenReturn(listing);
+        when(transactionSource.getBuyer()).thenReturn(buyer);
+        when(transactionSource.getSeller()).thenReturn(seller);
+        when(transactionSource.getStatus()).thenReturn(status);
+        when(transactionSource.getAmount()).thenReturn(new BigDecimal("25.00"));
+        when(transactionSource.getId()).thenReturn(UUID.randomUUID());
+        when(transactionSource.getCreatedAt()).thenReturn(OffsetDateTime.now());
+        when(transactionSource.getUpdatedAt()).thenReturn(OffsetDateTime.now());
+        when(listing.getId()).thenReturn(UUID.randomUUID());
+        when(listing.getGame()).thenReturn(game);
+        when(game.getId()).thenReturn("game-1");
+    }
+
+    interface MarketplaceTransactionResponseSource {}
 }
