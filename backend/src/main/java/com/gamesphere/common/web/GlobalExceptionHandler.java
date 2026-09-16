@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
+    @ExceptionHandler({ConflictException.class, com.gamesphere.common.web.ConflictException.class})
+    public ResponseEntity<ApiResponse<Void>> handleConflict(RuntimeException exception) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.failure(exception.getMessage()));
@@ -47,8 +47,8 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(exception.getMessage()));
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException exception) {
+    @ExceptionHandler({ResourceNotFoundException.class, com.gamesphere.common.web.ResourceNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(RuntimeException exception) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.failure(exception.getMessage()));
