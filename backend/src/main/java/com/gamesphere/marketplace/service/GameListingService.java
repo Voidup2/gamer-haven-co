@@ -46,7 +46,7 @@ public class GameListingService {
         GameListing listing = new GameListing(game, seller, request.title(), request.imageUrl(), request.description(),
                 request.condition(), request.price(), request.platform(), request.location(), request.contactEmail(),
                 request.contactPhone(), request.boxIncluded(), request.manualIncluded());
-        return response(listingRepository.save(listing));
+        return response(listingRepository.save(listing), true);
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +64,7 @@ public class GameListingService {
                 GameListingSpecifications.condition(condition), GameListingSpecifications.minPrice(minPrice),
                 GameListingSpecifications.maxPrice(maxPrice), GameListingSpecifications.platform(platform),
                 GameListingSpecifications.boxIncluded(boxIncluded), GameListingSpecifications.manualIncluded(manualIncluded));
-        return listingRepository.findAll(specification, pageable).map(this::response);
+        return listingRepository.findAll(specification, pageable).map(listing -> response(listing, false));
     }
 
     @Transactional(readOnly = true)
@@ -73,19 +73,19 @@ public class GameListingService {
     }
 
     @Transactional(readOnly = true)
-    public GameListingResponse findById(UUID id) { return response(findListing(id)); }
+    public GameListingResponse findById(UUID id) { return response(findListing(id), false); }
 
     @Transactional(readOnly = true)
     public Page<GameListingResponse> findMine(Pageable pageable) {
-        return listingRepository.findBySellerId(currentUser().getId(), pageable).map(this::response);
+        return listingRepository.findBySellerId(currentUser().getId(), pageable).map(listing -> response(listing, true));
     }
 
     @Transactional(readOnly = true)
     public Page<GameListingResponse> findForModeration(GameListing.Status status, Pageable pageable) {
         if (status == null) {
-            return listingRepository.findAll(pageable).map(this::response);
+            return listingRepository.findAll(pageable).map(listing -> response(listing, true));
         }
-        return listingRepository.findByStatus(status, pageable).map(this::response);
+        return listingRepository.findByStatus(status, pageable).map(listing -> response(listing, true));
     }
 
     @Transactional
@@ -95,7 +95,7 @@ public class GameListingService {
         listing.update(request.title(), request.imageUrl(), request.description(), request.condition(), request.price(),
                 request.platform(), request.location(), request.contactEmail(), request.contactPhone(),
                 request.boxIncluded(), request.manualIncluded());
-        return response(listingRepository.save(listing));
+        return response(listingRepository.save(listing), true);
     }
 
     @Transactional
@@ -110,7 +110,7 @@ public class GameListingService {
         GameListing listing = findOwned(id);
         requireOwnerStatusTransition(listing.getStatus(), status);
         listing.setStatus(status);
-        return response(listingRepository.save(listing));
+        return response(listingRepository.save(listing), true);
     }
 
     @Transactional
@@ -127,7 +127,7 @@ public class GameListingService {
             throw new ConflictException("A sold listing cannot be removed");
         }
         listing.setStatus(targetStatus);
-        return response(listingRepository.save(listing));
+        return response(listingRepository.save(listing), true);
     }
 
     private void requireOwnerStatusTransition(GameListing.Status currentStatus, GameListing.Status targetStatus) {
@@ -147,11 +147,13 @@ public class GameListingService {
         throw new ConflictException("Invalid listing status transition");
     }
 
-    private GameListingResponse response(GameListing listing) {
+    private GameListingResponse response(GameListing listing, boolean includeContact) {
         Long sellerId = listing.getSeller().getId();
         Double average = ratingRepository.findAverageRatingBySellerId(sellerId);
         long count = ratingRepository.countBySellerId(sellerId);
-        return GameListingResponse.from(listing, average == null ? 0.0 : average, count);
+        return includeContact
+                ? GameListingResponse.from(listing, average == null ? 0.0 : average, count)
+                : GameListingResponse.publicView(listing, average == null ? 0.0 : average, count);
     }
 
     private void requireContact(GameListingRequest request) {
