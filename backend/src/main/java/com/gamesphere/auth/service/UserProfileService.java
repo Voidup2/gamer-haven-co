@@ -6,7 +6,6 @@ import com.gamesphere.auth.api.UserProfileResponse;
 import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.AuthSessionRepository;
 import com.gamesphere.auth.repository.UserRepository;
-import com.gamesphere.common.exception.ResourceNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -73,6 +72,6 @@ public class UserProfileService {
 
     private User findUser(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 }
