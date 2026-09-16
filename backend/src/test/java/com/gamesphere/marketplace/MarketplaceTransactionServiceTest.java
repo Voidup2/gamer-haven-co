@@ -362,23 +362,18 @@ class MarketplaceTransactionServiceTest {
         return MarketplaceTransactionResponse.from(transaction);
     }
 
-    private void givenResponseFields(MarketplaceTransactionResponseSource source, GameListing listing, User buyer, User seller, MarketplaceTransaction.Status status) {
-        // This overload is intentionally not used.
-    }
-
-    private void givenResponseFields(MarketplaceTransaction transactionSource, GameListing listing, User buyer, User seller, MarketplaceTransaction.Status status) {
-        when(transactionSource.getListing()).thenReturn(listing);
-        when(transactionSource.getBuyer()).thenReturn(buyer);
-        when(transactionSource.getSeller()).thenReturn(seller);
+    private void givenResponseFields(MarketplaceTransaction transactionSource, GameListing listingSource,
+                                     User buyerSource, User sellerSource, MarketplaceTransaction.Status status) {
+        when(transactionSource.getListing()).thenReturn(listingSource);
+        when(transactionSource.getBuyer()).thenReturn(buyerSource);
+        when(transactionSource.getSeller()).thenReturn(sellerSource);
         when(transactionSource.getStatus()).thenReturn(status);
         when(transactionSource.getAmount()).thenReturn(new BigDecimal("25.00"));
         when(transactionSource.getId()).thenReturn(UUID.randomUUID());
         when(transactionSource.getCreatedAt()).thenReturn(OffsetDateTime.now());
         when(transactionSource.getUpdatedAt()).thenReturn(OffsetDateTime.now());
-        when(listing.getId()).thenReturn(UUID.randomUUID());
-        when(listing.getGame()).thenReturn(game);
+        when(listingSource.getId()).thenReturn(UUID.randomUUID());
+        when(listingSource.getGame()).thenReturn(game);
         when(game.getId()).thenReturn("game-1");
     }
-
-    interface MarketplaceTransactionResponseSource {}
 }
