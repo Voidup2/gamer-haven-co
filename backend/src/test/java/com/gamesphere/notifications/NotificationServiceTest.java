@@ -123,7 +123,6 @@ class NotificationServiceTest {
 
     @Test
     void markReadRejectsUnknownNotification() {
-        authenticateWithoutUserLookupSideEffects();
         when(notificationRepository.findById(notificationId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> service.markRead(notificationId));
@@ -178,9 +177,5 @@ class NotificationServiceTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("alice", null, List.of()));
-    }
-
-    private void authenticateWithoutUserLookupSideEffects() {
-        authenticate();
     }
 }
