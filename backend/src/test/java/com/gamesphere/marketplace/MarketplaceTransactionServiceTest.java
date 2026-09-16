@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +41,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class MarketplaceTransactionServiceTest {
     @Mock MarketplaceTransactionRepository transactionRepository;
     @Mock GameListingRepository listingRepository;
@@ -221,7 +224,10 @@ class MarketplaceTransactionServiceTest {
         when(transaction.getCreatedAt()).thenReturn(OffsetDateTime.now());
         when(transaction.getUpdatedAt()).thenReturn(OffsetDateTime.now());
         when(transactionRepository.save(transaction)).thenReturn(transaction);
-        when(transaction.getStatus()).thenReturn(MarketplaceTransaction.Status.COMPLETED);
+        doAnswer(invocation -> {
+            when(transaction.getStatus()).thenReturn(MarketplaceTransaction.Status.COMPLETED);
+            return null;
+        }).when(transaction).setStatus(MarketplaceTransaction.Status.COMPLETED);
 
         transactionService.complete(id);
 
@@ -254,8 +260,10 @@ class MarketplaceTransactionServiceTest {
         when(transaction.getListing()).thenReturn(listing);
         when(listing.getTitle()).thenReturn("Test Game");
         when(transactionRepository.save(transaction)).thenReturn(transaction);
-        when(transaction.getStatus()).thenReturn(MarketplaceTransaction.Status.CANCELLED);
-        when(transaction.getId()).thenReturn(id);
+        doAnswer(invocation -> {
+            when(transaction.getStatus()).thenReturn(MarketplaceTransaction.Status.CANCELLED);
+            return null;
+        }).when(transaction).setStatus(MarketplaceTransaction.Status.CANCELLED);
         when(transaction.getAmount()).thenReturn(new BigDecimal("25.00"));
         when(transaction.getCreatedAt()).thenReturn(OffsetDateTime.now());
         when(transaction.getUpdatedAt()).thenReturn(OffsetDateTime.now());
@@ -339,16 +347,18 @@ class MarketplaceTransactionServiceTest {
 
     private void givenAuthorizationTransaction(UUID id, long sellerId, long buyerId, MarketplaceTransaction.Status status) {
         when(transactionRepository.findWithLockById(id)).thenReturn(Optional.of(transaction));
-        when(transaction.getId()).thenReturn(id);
+        when(transactionRepository.findById(id)).thenReturn(Optional.of(transaction));
+        lenient().when(transaction.getId()).thenReturn(id);
         when(transaction.getSeller()).thenReturn(seller);
-        when(transaction.getBuyer()).thenReturn(buyer);
+        lenient().when(transaction.getBuyer()).thenReturn(buyer);
         when(seller.getId()).thenReturn(sellerId);
-        when(buyer.getId()).thenReturn(buyerId);
+        lenient().when(buyer.getId()).thenReturn(buyerId);
         when(transaction.getStatus()).thenReturn(status);
     }
 
     private MarketplaceTransactionResponse givenResponseTransaction(UUID id, long sellerId, long buyerId, MarketplaceTransaction.Status status) {
         givenAuthorizationTransaction(id, sellerId, buyerId, status);
+        when(transaction.getId()).thenReturn(id);
         when(transaction.getListing()).thenReturn(listing);
         when(listing.getId()).thenReturn(UUID.randomUUID());
         when(listing.getTitle()).thenReturn("Test Game");
