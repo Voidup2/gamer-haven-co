@@ -6,8 +6,7 @@ import com.gamesphere.auth.service.JwtService;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -21,13 +20,14 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
 class ChatWebSocketAuthInterceptorTest {
-    @Mock JwtService jwtService;
-    @Mock Claims claims;
-    @Mock UserRepository userRepository;
-    @Mock ChatService chatService;
-    @Mock User user;
+    @org.mockito.Mock JwtService jwtService;
+    @org.mockito.Mock Claims claims;
+    @org.mockito.Mock UserRepository userRepository;
+    @org.mockito.Mock ObjectProvider<ChatService> chatServiceProvider;
+    @org.mockito.Mock ChatService chatService;
+    @org.mockito.Mock User user;
 
     @Test
     void connectRejectsMissingAuthorization() {
@@ -81,6 +81,7 @@ class ChatWebSocketAuthInterceptorTest {
         accessor.setUser(authentication);
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(chatServiceProvider.getObject()).thenReturn(chatService);
 
         assertSame(message, interceptor.preSend(message, null));
         verify(chatService).assertCanAccess(roomId, user);
@@ -96,6 +97,7 @@ class ChatWebSocketAuthInterceptorTest {
         accessor.setUser(authentication);
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(chatServiceProvider.getObject()).thenReturn(chatService);
         doThrow(new AccessDeniedException("denied")).when(chatService).assertCanAccess(roomId, user);
 
         assertThrows(AccessDeniedException.class, () -> interceptor.preSend(message, null));
@@ -111,7 +113,7 @@ class ChatWebSocketAuthInterceptorTest {
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
         assertThrows(AccessDeniedException.class, () -> interceptor.preSend(message, null));
-        verifyNoInteractions(userRepository, chatService);
+        verifyNoInteractions(userRepository, chatServiceProvider, chatService);
     }
 
     @Test
@@ -121,11 +123,11 @@ class ChatWebSocketAuthInterceptorTest {
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
         assertSame(message, interceptor.preSend(message, null));
-        verifyNoInteractions(jwtService, userRepository, chatService);
+        verifyNoInteractions(jwtService, userRepository, chatServiceProvider, chatService);
     }
 
     private ChatWebSocketAuthInterceptor interceptor() {
-        return new ChatWebSocketAuthInterceptor(jwtService, userRepository, chatService);
+        return new ChatWebSocketAuthInterceptor(jwtService, userRepository, chatServiceProvider);
     }
 
     private Message<byte[]> connectMessage(String authorization) {
