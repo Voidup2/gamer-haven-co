@@ -14,6 +14,8 @@ import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as GameGameIdRouteImport } from './routes/game.$gameId'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +42,16 @@ const GameGameIdRoute = GameGameIdRouteImport.update({
   path: '/game/$gameId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/marketplace': typeof MarketplaceRoute
   '/game/$gameId': typeof GameGameIdRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/marketplace': typeof MarketplaceRoute
   '/game/$gameId': typeof GameGameIdRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,12 +78,13 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/marketplace': typeof MarketplaceRoute
   '/game/$gameId': typeof GameGameIdRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/browse' | '/community' | '/marketplace' | '/game/$gameId'
+  fullPaths: '/' | '/browse' | '/community' | '/marketplace' | '/game/$gameId' | '/login' | '/register'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/browse' | '/community' | '/marketplace' | '/game/$gameId'
   id:
     | '__root__'
     | '/'
@@ -75,6 +92,8 @@ export interface FileRouteTypes {
     | '/community'
     | '/marketplace'
     | '/game/$gameId'
+    | '/login'
+    | '/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -83,6 +102,8 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   MarketplaceRoute: typeof MarketplaceRoute
   GameGameIdRoute: typeof GameGameIdRoute
+  LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,6 +143,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameGameIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -131,6 +166,8 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   MarketplaceRoute: MarketplaceRoute,
   GameGameIdRoute: GameGameIdRoute,
+  LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
