@@ -9,7 +9,7 @@ import {
   type LoginResponse,
   type RegisterRequest,
 } from "@/api/auth";
-import { setAccessToken } from "@/api/client";
+import { api, setAccessToken, setRefreshHandler } from "@/api/client";
 
 const STORAGE_KEY = "gamesphere.auth";
 
@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutAll = useCallback(async () => {
     try {
-      const { api } = await import("@/api/client");
       await api.post<void>("/auth/logout-all");
     } finally {
       clearAuth();
@@ -122,6 +121,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+    };
+  }, [applySession, clearAuth]);
+
+  useEffect(() => {
+    const refreshAccessToken = async () => {
+      const currentRefreshToken = readStoredSession()?.refreshToken;
+      if (!currentRefreshToken) {
+        return null;
+      }
+
+      try {
+        const nextSession = await refreshRequest(currentRefreshToken);
+        if (!cancelledForRefresh) {
+          applySession(nextSession);
+        }
+        return nextSession.accessToken;
+      } catch {
+        if (!cancelledForRefresh) {
+          clearAuth();
+        }
+        return null;
+      }
+    };
+
+    let cancelledForRefresh = false;
+    setRefreshHandler(refreshAccessToken);
+
+    return () => {
+      cancelledForRefresh = true;
+      setRefreshHandler(null);
     };
   }, [applySession, clearAuth]);
 
