@@ -17,6 +17,8 @@ export class ApiError extends Error {
 }
 
 let accessToken: string | null = null;
+let refreshHandler: (() => Promise<string | null>) | null = null;
+let refreshPromise: Promise<string | null> | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -24,6 +26,10 @@ export function setAccessToken(token: string | null) {
 
 export function getAccessToken() {
   return accessToken;
+}
+
+export function setRefreshHandler(handler: (() => Promise<string | null>) | null) {
+  refreshHandler = handler;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -49,7 +55,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function executeFetch<T>(path: string, init: RequestInit): Promise<Response> {
   const headers = new Headers(init.headers);
 
   if (init.body && !headers.has("Content-Type")) {
@@ -60,10 +66,25 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+  return fetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
     ...init,
     headers,
   });
+}
+
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  let response = await executeFetch(path, init);
+
+  if (response.status === 401 && refreshHandler && path !== "/auth/refresh" && path !== "auth/refresh") {
+    refreshPromise ??= refreshHandler().finally(() => {
+      refreshPromise = null;
+    });
+
+    const refreshedToken = await refreshPromise;
+    if (refreshedToken) {
+      response = await executeFetch(path, init);
+    }
+  }
 
   return parseResponse<T>(response);
 }
