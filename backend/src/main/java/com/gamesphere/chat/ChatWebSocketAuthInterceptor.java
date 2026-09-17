@@ -4,6 +4,7 @@ import com.gamesphere.auth.domain.User;
 import com.gamesphere.auth.repository.UserRepository;
 import com.gamesphere.auth.service.JwtService;
 import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -25,12 +26,15 @@ public class ChatWebSocketAuthInterceptor implements ChannelInterceptor {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final ChatService chatService;
+    private final ObjectProvider<ChatService> chatServiceProvider;
 
-    public ChatWebSocketAuthInterceptor(JwtService jwtService, UserRepository userRepository, ChatService chatService) {
+    public ChatWebSocketAuthInterceptor(
+            JwtService jwtService,
+            UserRepository userRepository,
+            ObjectProvider<ChatService> chatServiceProvider) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
-        this.chatService = chatService;
+        this.chatServiceProvider = chatServiceProvider;
     }
 
     @Override
@@ -92,6 +96,6 @@ public class ChatWebSocketAuthInterceptor implements ChannelInterceptor {
 
         User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new AccessDeniedException("Authenticated user not found"));
-        chatService.assertCanAccess(roomId, user);
+        chatServiceProvider.getObject().assertCanAccess(roomId, user);
     }
 }
