@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Bell, Calendar, Compass, Flame, Gamepad2, Heart, Home, Layers, LayoutGrid, Library,
   MessageSquare, Menu, Newspaper, Search, Settings, ShoppingBag, Sparkles, Star, Tag, Users,
@@ -67,6 +67,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
   const { session, isAuthenticated, logout } = useAuth();
 
   return (
@@ -85,8 +87,23 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input type="search" aria-label="Search games, genres, developers" placeholder="Search games, genres, developers..." className="h-10 rounded-xl border-border/70 bg-secondary/60 pl-9" />
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const q = searchQuery.trim();
+                void navigate({ to: "/browse", search: q ? { q } : {} });
+              }}
+            >
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search games, genres, developers"
+                placeholder="Search games, genres, developers..."
+                className="h-10 rounded-xl border-border/70 bg-secondary/60 pl-9"
+              />
+            </form>
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
