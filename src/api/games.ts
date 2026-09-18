@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { Game } from "@/data/games";
 
 export type ApiGame = {
   id: string;
@@ -67,6 +68,39 @@ function toQuery(params: GameSearchParams) {
   return query.toString();
 }
 
+function mapGame(game: ApiGame): Game {
+  return {
+    id: game.id,
+    title: game.title,
+    tagline: game.tagline,
+    description: game.description,
+    cover: game.coverUrl,
+    banner: game.bannerUrl,
+    rating: game.rating,
+    reviews: game.reviewCount,
+    price: game.price,
+    discount: game.discount ?? undefined,
+    releaseDate: game.releaseDate,
+    year: game.releaseYear,
+    developer: game.developer,
+    publisher: game.publisher,
+    genres: game.genres ?? [],
+    platforms: game.platforms ?? [],
+    tags: game.tags ?? [],
+    esrb: game.esrb,
+    multiplayer: game.multiplayer,
+    coop: game.coop,
+    freeToPay: game.freeToPlay,
+    vr: game.vr,
+    earlyAccess: game.earlyAccess,
+    controller: game.controller,
+    languages: game.languages ?? [],
+    features: game.features ?? [],
+    stores: game.stores ?? [],
+    requirements: game.requirements ?? [],
+  };
+}
+
 export async function getGames(params: GameSearchParams = {}) {
   const query = toQuery({
     page: 0,
@@ -76,9 +110,9 @@ export async function getGames(params: GameSearchParams = {}) {
     ...params,
   });
 
-  return api.get<GamePage>(`/games?${query}`);
+  const response = await api.get<GamePage>(`/games?${query}`);\n  return { ...response, content: response.content.map(mapGame) };
 }
 
 export async function getGame(id: string) {
-  return api.get<ApiGame>(`/games/${encodeURIComponent(id)}`);
+  const response = await api.get<ApiGame>(`/games/${encodeURIComponent(id)}`);\n  return mapGame(response);
 }
