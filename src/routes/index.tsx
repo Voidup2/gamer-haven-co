@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Flame, Sparkles, Star, TrendingUp } from "lucide-react";
 import { type ReactNode } from "react";
 
 import { GameCard } from "@/components/GameCard";
+import { getGames } from "@/api/games";
 import { HeroSlider } from "@/components/HeroSlider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -77,16 +79,26 @@ function Grid({ items }: { items: typeof games }) {
 }
 
 function Home() {
-  const trending = [...games].sort((a, b) => b.reviews - a.reviews);
-  const topRated = [...games].sort((a, b) => b.rating - a.rating);
-  const upcoming = games.filter((g) => g.year >= 2026);
-  const free = games.filter((g) => g.freeToPay);
-  const deals = games.filter((g) => g.discount);
+  const { data: gamesData, isLoading: gamesLoading, isError: gamesError } = useQuery({
+    queryKey: ["home-games"],
+    queryFn: () => getGames({ page: 0, size: 24, sortBy: "title", direction: "asc" }),
+  });
+
+  const apiGames = gamesData?.content ?? [];
+  const homeGames = apiGames.length > 0 ? apiGames : games;
+  const trending = [...homeGames].sort((a, b) => b.reviews - a.reviews);
+  const topRated = [...homeGames].sort((a, b) => b.rating - a.rating);
+  const upcoming = homeGames.filter((g) => g.year >= 2026);
+  const free = homeGames.filter((g) => g.freeToPay);
+  const deals = homeGames.filter((g) => g.discount);
 
   return (
     <div className="grid gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-10">
         <HeroSlider />
+
+        {gamesLoading && <p className="text-sm text-muted-foreground">Loading games...</p>}
+        {gamesError && <p className="text-sm text-destructive">Unable to load games from the server.</p>}
 
         <Row title="Trending Now" icon={<TrendingUp className="size-5 text-primary" aria-hidden />}>
           <Grid items={trending} />
