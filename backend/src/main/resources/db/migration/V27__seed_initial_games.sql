@@ -1,0 +1,123 @@
+-- Seed the initial GameSphere catalog used by the frontend.
+-- Artwork is intentionally left null here; the frontend maps local bundled artwork by game id.
+
+DELETE FROM games WHERE id = 'test-game-001';
+
+INSERT INTO games (
+    id, title, tagline, description, cover_url, banner_url,
+    rating, review_count, price, discount, release_date, release_year,
+    developer, publisher, esrb, multiplayer, coop, free_to_play, vr, early_access, controller,
+    genres, platforms, tags, languages, features, stores, requirements
+) VALUES
+(
+    'ashen-crown',
+    'Ashen Crown',
+    'Shadow of the Ember Throne',
+    'A punishing dark-fantasy action RPG set across a shattered kingdom. Forge your own legend through deliberate, weighty combat and a world that rewards the curious.',
+    NULL, NULL, 9.4, 128420, 59.99, 25, '2025-11-14', 2025,
+    'Emberlight Studios', 'Northgate Interactive', 'M (Mature 17+)', TRUE, TRUE, FALSE, FALSE, FALSE, TRUE,
+    '["Action","RPG","Souls-like"]'::jsonb,
+    '["PC","PS5","Xbox Series X"]'::jsonb,
+    '["Open World","Difficult","Atmospheric","Story Rich"]'::jsonb,
+    '["English","French","German","Japanese","Spanish"]'::jsonb,
+    '["Single Player","Online Co-op","Achievements","Cloud Saves","Ultrawide Support"]'::jsonb,
+    '[]'::jsonb, '[]'::jsonb
+),
+(
+    'verdant-ruin',
+    'Verdant Ruin',
+    'Reclaim the wild city',
+    'A cinematic survival-adventure through a reclaimed metropolis. Craft, hunt and negotiate your way through fractured factions in a living, breathing overgrown world.',
+    NULL, NULL, 8.9, 74210, 49.99, NULL, '2026-02-20', 2026,
+    'Wildline Games', 'Aurora Publishing', 'M (Mature 17+)', FALSE, FALSE, FALSE, FALSE, FALSE, TRUE,
+    '["Action","Adventure","Survival"]'::jsonb,
+    '["PC","PS5"]'::jsonb,
+    '["Open World","Crafting","Post-apocalyptic","Female Protagonist"]'::jsonb,
+    '["English","Portuguese","Italian","Korean"]'::jsonb,
+    '["Single Player","Photo Mode","Achievements","HDR"]'::jsonb,
+    '[]'::jsonb, '[]'::jsonb
+),
+(
+    'neon-drift',
+    'Neon Drift 2077',
+    'Own every rain-slick street',
+    'High-velocity street racing in a sprawling neon megacity. Tune, drift, and outrun rival crews across a persistent open world with seamless online lobbies.',
+    NULL, NULL, 8.7, 96140, 39.99, 50, '2025-06-05', 2025,
+    'Vertex Motion', 'Hypergrid', 'T (Teen)', TRUE, TRUE, FALSE, TRUE, FALSE, TRUE,
+    '["Racing","Open World"]'::jsonb,
+    '["PC","PS5","Xbox Series X"]'::jsonb,
+    '["Cyberpunk","Multiplayer","Customization","Fast-Paced"]'::jsonb,
+    '["English","Japanese","Chinese","German"]'::jsonb,
+    '["Online Multiplayer","Split Screen","VR Support","Achievements"]'::jsonb,
+    '[]'::jsonb, '[]'::jsonb
+),
+(
+    'lumen-hollow',
+    'Lumen Hollow',
+    'A tiny lantern against a vast night',
+    'A hand-painted cozy exploration game about mapping a glowing forest, befriending its creatures, and slowly bringing light back to a forgotten valley.',
+    NULL, NULL, 9.1, 31280, 0, NULL, '2026-01-09', 2026,
+    'Paper Fox Collective', 'Paper Fox Collective', 'E (Everyone)', FALSE, TRUE, TRUE, FALSE, FALSE, TRUE,
+    '["Indie","Adventure","Puzzle"]'::jsonb,
+    '["PC","Switch"]'::jsonb,
+    '["Cozy","Hand-drawn","Relaxing","Exploration"]'::jsonb,
+    '["English","Spanish","Japanese"]'::jsonb,
+    '["Single Player","Local Co-op","Controller Support"]'::jsonb,
+    '[]'::jsonb, '[]'::jsonb
+),
+(
+    'iron-vanguard',
+    'Iron Vanguard',
+    'Pilot the storm',
+    'Command a customizable mech squad in tactical, destructible arenas. Layered loadouts, ranked seasons and a full campaign of desert warfare.',
+    NULL, NULL, 8.4, 58730, 34.99, NULL, '2026-05-22', 2026,
+    'Redshift Works', 'Northgate Interactive', 'T (Teen)', TRUE, TRUE, FALSE, FALSE, TRUE, TRUE,
+    '["Action","Shooter","Strategy"]'::jsonb,
+    '["PC","Xbox Series X"]'::jsonb,
+    '["Mechs","Competitive","Sci-fi","Destruction"]'::jsonb,
+    '["English","Russian","Chinese"]'::jsonb,
+    '["Online Multiplayer","Ranked Play","Early Access","Achievements"]'::jsonb,
+    '[]'::jsonb, '[]'::jsonb
+),
+(
+    'crimson-blade',
+    'Crimson Blade',
+    'Two swords, one moon',
+    'A stylish samurai duelling game built on precise parries and readable tells. Feudal landscapes rendered in painterly detail with a haunting original score.',
+    NULL, NULL, 9.2, 87120, 44.99, 15, '2025-09-30', 2025,
+    'Kagerou Interactive', 'Aurora Publishing', 'M (Mature 17+)', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE,
+    '["Action","Fighting"]'::jsonb,
+    '["PC","PS5","Switch"]'::jsonb,
+    '["Samurai","Difficult","Stylized","PvP"]'::jsonb,
+    '["English","Japanese","French"]'::jsonb,
+    '["Single Player","Online PvP","Achievements","Photo Mode"]'::jsonb,
+    '[]'::jsonb, '[]'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
+    tagline = EXCLUDED.tagline,
+    description = EXCLUDED.description,
+    cover_url = EXCLUDED.cover_url,
+    banner_url = EXCLUDED.banner_url,
+    rating = EXCLUDED.rating,
+    review_count = EXCLUDED.review_count,
+    price = EXCLUDED.price,
+    discount = EXCLUDED.discount,
+    release_date = EXCLUDED.release_date,
+    release_year = EXCLUDED.release_year,
+    developer = EXCLUDED.developer,
+    publisher = EXCLUDED.publisher,
+    esrb = EXCLUDED.esrb,
+    multiplayer = EXCLUDED.multiplayer,
+    coop = EXCLUDED.coop,
+    free_to_play = EXCLUDED.free_to_play,
+    vr = EXCLUDED.vr,
+    early_access = EXCLUDED.early_access,
+    controller = EXCLUDED.controller,
+    genres = EXCLUDED.genres,
+    platforms = EXCLUDED.platforms,
+    tags = EXCLUDED.tags,
+    languages = EXCLUDED.languages,
+    features = EXCLUDED.features,
+    stores = EXCLUDED.stores,
+    requirements = EXCLUDED.requirements;
