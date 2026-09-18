@@ -68,14 +68,32 @@ function toQuery(params: GameSearchParams) {
   return query.toString();
 }
 
+const coverFallbacks: Record<string, string> = {
+  "ashen-crown": cover1,
+  "verdant-ruin": cover2,
+  "neon-drift": cover3,
+  "lumen-hollow": cover4,
+  "iron-vanguard": cover5,
+  "crimson-blade": cover6,
+};
+
+const bannerFallbacks: Record<string, string> = {
+  "ashen-crown": hero1,
+  "verdant-ruin": hero1,
+  "neon-drift": hero2,
+  "lumen-hollow": hero1,
+  "iron-vanguard": hero3,
+  "crimson-blade": hero1,
+};
+
 function mapGame(game: ApiGame): Game {
   return {
     id: game.id,
     title: game.title,
     tagline: game.tagline,
     description: game.description,
-    cover: game.coverUrl,
-    banner: game.bannerUrl,
+    cover: game.coverUrl ?? coverFallbacks[game.id] ?? cover1,
+    banner: game.bannerUrl ?? bannerFallbacks[game.id] ?? hero1,
     rating: game.rating,
     reviews: game.reviewCount,
     price: game.price,
