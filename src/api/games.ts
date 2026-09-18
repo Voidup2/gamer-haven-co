@@ -1,3 +1,13 @@
+import cover1 from "@/assets/cover-1.jpg";
+import cover2 from "@/assets/cover-2.jpg";
+import cover3 from "@/assets/cover-3.jpg";
+import cover4 from "@/assets/cover-4.jpg";
+import cover5 from "@/assets/cover-5.jpg";
+import cover6 from "@/assets/cover-6.jpg";
+import hero1 from "@/assets/hero-1.jpg";
+import hero2 from "@/assets/hero-2.jpg";
+import hero3 from "@/assets/hero-3.jpg";
+
 import { api } from "./client";
 import type { Game } from "@/data/games";
 
@@ -128,9 +138,11 @@ export async function getGames(params: GameSearchParams = {}) {
     ...params,
   });
 
-  const response = await api.get<GamePage>(`/games?${query}`);\n  return { ...response, content: response.content.map(mapGame) };
+  const response = await api.get<GamePage>(`/games?${query}`);
+  return { ...response, content: response.content.map(mapGame) };
 }
 
 export async function getGame(id: string) {
-  const response = await api.get<ApiGame>(`/games/${encodeURIComponent(id)}`);\n  return mapGame(response);
+  const response = await api.get<ApiGame>(`/games/${encodeURIComponent(id)}`);
+  return mapGame(response);
 }
